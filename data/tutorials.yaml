@@ -1,0 +1,134 @@
+# Renewal tutorials: the real steps to obtain, renew and revoke each
+# kind of credential the fleet depends on. One entry per tutorial.
+#
+# This file feeds two consumers:
+#   - the Tutorials view in the site (fetched at runtime)
+#   - llms.txt at the site root (regenerate with `make llms`)
+# Edit here, never in llms.txt.
+#
+# Rules for entries: steps and insights carry commands and traps, never
+# secret values, never IP addresses, never account emails.
+
+tutorials:
+  - id: convex-cli
+    title: Renew Convex CLI auth
+    service: Convex
+    applies_to: oauth-session
+    signals:
+      - "`npx convex deploy` or `npx convex dev` fails with an authentication error"
+      - "Convex deploys have been blocked since the last login went stale"
+    steps:
+      - "Open a real interactive terminal. The login is a browser OAuth flow; it cannot run from a non-interactive session, so an agent must hand this step to a person."
+      - "From the Convex project directory (for the fleet: `projects/memes-site`), run `npx convex login`."
+      - "Complete the browser prompt with the Convex account."
+    verify: "`npx convex dev --once` from the project directory completes without an auth error."
+    revoke: "Log out with `npx convex logout`, or revoke the session from the Convex dashboard settings."
+    insights:
+      - "The CLI token goes stale silently: nothing warns before a deploy fails. The fleet's token minted 2026-05-28 was dead by late August, so treat roughly 90 days as the working lifetime and record the login date."
+      - "Renewal is the one step in the fleet's deploy chain that cannot be automated; schedule it, do not discover it."
+    links:
+      - label: Convex dashboard
+        url: https://dashboard.convex.dev/
+
+  - id: wrangler-oauth
+    title: Renew the Cloudflare wrangler session
+    service: Cloudflare
+    applies_to: oauth-session
+    signals:
+      - "`wrangler deploy` or `wrangler secret put` fails with an auth error"
+    steps:
+      - "Check who the CLI thinks you are: `wrangler whoami`."
+      - "If the session is stale, run `wrangler login` (browser OAuth; needs an interactive terminal)."
+      - "Worker secrets are written from the worker's own directory with `wrangler secret put NAME`; `worker/wrangler.toml` names the worker."
+    verify: "`wrangler whoami` reports the expected account."
+    revoke: "`wrangler logout`, or revoke the authorization under the Cloudflare dashboard's API tokens page."
+    insights:
+      - "No long-lived token is stored anywhere in the repo; the OAuth session is cached locally. When a deploy fails, check `wrangler whoami` before touching any secret."
+      - "Deploys and secret writes are per-account, so a whoami mismatch explains most sudden 403s."
+    links:
+      - label: Cloudflare dashboard
+        url: https://dash.cloudflare.com/
+
+  - id: r2-cdn-token
+    title: Rotate the R2 API token behind the CDN publish
+    service: Cloudflare R2
+    applies_to: api-key
+    signals:
+      - "`upload-assets.js` fails, or the cdn repo's Actions publish run fails"
+    steps:
+      - "Decode the error first; most failures are not a dead credential. `Unauthorized`: token dead or revoked. `SignatureDoesNotMatch`: secret mis-pasted (R2 secrets are exactly 64 hex chars, check the length). `code 9109 Cannot use the access token from location`: client IP allowlist rejection, not a credential problem."
+      - "To rotate: Cloudflare dashboard, R2, Manage R2 API Tokens. One R2 API token issues both the S3 key pair and the Cloudflare API token; they share one lifecycle."
+      - "Update the local `.env` in `projects/neorgon-cdn-site/` (`CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`)."
+      - "Update the same values as GitHub Actions secrets on the cdn repo; the Actions pipeline publishes on push."
+    verify: "Push to the cdn repo and watch the Actions publish run, or run `upload-assets.js` locally."
+    revoke: "Delete the token under Manage R2 API Tokens; both halves die together."
+    insights:
+      - "The IP-filter trap (hit 2026-08-03): allowlisting the machine's IPv6 address breaks within hours, because IPv6 privacy extensions rotate the suffix. Allowlist the stable IPv4, or a CIDR block."
+      - "The CI token must have no client IP allowlist at all: GitHub runners rotate IPs, so an allowlisted token fails every run with code 9109. Mint a separate unfiltered token for CI if the interactive one is filtered."
+
+  - id: gh-cli
+    title: Fix GitHub CLI auth and account switching
+    service: GitHub
+    applies_to: oauth-session
+    signals:
+      - "`gh repo create` fails with a permissions error"
+      - "`gh` commands act as the wrong account"
+    steps:
+      - "See every logged-in account and which is active: `gh auth status`."
+      - "Switch with `gh auth switch --user <name>`; log a missing account in with `gh auth login` (browser flow)."
+      - "Repo creation in the fleet's org must run as the account that owns it; switch before `gh repo create`, not after it fails."
+    verify: "`gh auth status` shows the intended account as active."
+    revoke: "`gh auth logout --user <name>`, or revoke the device under GitHub Settings, Applications."
+    insights:
+      - "Two personas are logged in on this machine and only one has repo-create rights in the org; `gh auth status` first is cheaper than a failed create."
+      - "git identity is separate from gh identity: commits need the right `user.name`/`user.email` per repo even when gh is on the right account."
+
+  - id: github-ssh
+    title: Verify SSH push access to GitHub
+    service: GitHub
+    applies_to: ssh-key
+    signals:
+      - "`git push` asks for credentials or is refused"
+    steps:
+      - "Test the key: `ssh -T git@github.com` (expect the greeting with the right username)."
+      - "If refused, check the agent has the key loaded: `ssh-add -l`."
+      - "Remotes should use the SSH form (`git@github.com:owner/repo.git`); check with `git remote -v`."
+    verify: "`ssh -T git@github.com` greets the expected account."
+    revoke: "Remove the key under GitHub Settings, SSH and GPG keys."
+    insights:
+      - "SSH pushes work from agent sessions since 2026-08-18; the old HTTPS token workaround is retired. If a session claims it cannot push, the remote URL form is the first suspect."
+
+  - id: namecheap-dns
+    title: Restore Namecheap DNS API access
+    service: Namecheap
+    applies_to: ip-whitelist
+    signals:
+      - "DNS tooling fails with an API error after changing networks"
+    steps:
+      - "The API is IP-whitelisted and breaks on every network change, not only first setup. Check what IP you present: `make -C tooling/dns whoami` (run it in the current shell)."
+      - "Add that IP at Namecheap, Profile, Tools, API Access."
+      - "The key itself lives in a gitignored `.env` (`NAMECHEAP_API_KEY`); it does not rotate with the IP."
+    verify: "Re-run the DNS command that failed; then commit the fresh zone backup the tooling writes."
+    revoke: "Disable API access on the same Namecheap page."
+    insights:
+      - "Treat the whitelist as the credential: the key survives network changes, the allowlisted IP does not."
+      - "After any DNS change, commit the zone backup file; its git history is the zone's only portable backup."
+
+  - id: steam-web-api
+    title: Obtain or rotate a Steam Web API key
+    service: Valve Steam
+    applies_to: api-key
+    signals:
+      - "The Steam-backed endpoint answers NOT_CONFIGURED or upstream 401s"
+    steps:
+      - "Request the key at steamcommunity.com/dev/apikey with a non-limited Steam account (Valve lifts the limit only after USD 5 spent from the store)."
+      - "The form's domain field is an identifier, not a technical binding."
+      - "Store it as a worker secret, never in a file: `wrangler secret put STEAM_API_KEY` from the worker directory, then `wrangler deploy`."
+    verify: "Call the worker endpoint from outside; expect a JSON envelope, with NOT_CONFIGURED meaning the secret did not land."
+    revoke: "The same page has Revoke My Steam Web API Key. Revoke immediately if the key ever appears in a commit, a log or a paste, then re-put the secret."
+    insights:
+      - "A bare `Forbidden` from the endpoint means the old worker is still deployed, not that the key is bad."
+      - "Registering or revoking may require confirming in the Steam Mobile app."
+    links:
+      - label: Steam API key page
+        url: https://steamcommunity.com/dev/apikey

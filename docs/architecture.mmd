@@ -1,0 +1,39 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#0f172a"
+    primaryTextColor: "#e2e8f0"
+    primaryBorderColor: "#0063e5"
+    lineColor: "#38bdf8"
+    secondaryColor: "#1e293b"
+    tertiaryColor: "#1e293b"
+    clusterBkg: "#f0f7ff"
+    clusterBorder: "#bfdbfe"
+    edgeLabelBackground: "#e8f0ff"
+    mainBkg: "#0f172a"
+    nodeBorder: "#0063e5"
+    titleColor: "#1e1b4b"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif"
+    fontSize: "13px"
+---
+flowchart TB
+    User([User]) --> HTML["index.html\nFive views + credential modal"]
+
+    subgraph App["ES Modules"]
+        HTML --> app["app.js\nEntry point"]
+        app --> state["state.js\nInventory + tutorials, load order"]
+        app --> events["events.js\nListeners; URL hash drives navigation"]
+        events --> render["render.js\nBoard, table, modal, view switching"]
+        render --> calendar["calendar.js\nMonth grid"]
+        render --> tutorials["tutorials.js\nTutorial list + detail"]
+        state --> yamlio["yaml-io.js\nParse, validate, serialize"]
+        events --> ics["ics.js\nVCALENDAR builder"]
+        events --> notify["notify.js\nBrowser notifications"]
+    end
+
+    state <-->|"echeance-yaml"| Storage[("localStorage")]
+    state -->|"fetch, first hit wins"| Sources["inventory.local.yaml (gitignored)\nthen data/sample.yaml"]
+    tutorials -->|"fetch"| TutYaml["data/tutorials.yaml"]
+    TutYaml -->|"scripts/build-llms.py (make llms)"| Llms["llms.txt\nread by agent sessions"]
+    ics -->|"download .ics"| Cal["Your real calendar\nalarms at each lead time"]

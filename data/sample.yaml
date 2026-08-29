@@ -1,0 +1,65 @@
+# Sample inventory: dummy entries that demonstrate every state the
+# board can show. Replace with your own document in the YAML view.
+version: 1
+credentials:
+  - id: aws-access-key
+    name: AWS access key
+    service: AWS
+    kind: api-key
+    account: ci-deployer
+    domain: aws.amazon.com
+    created: 2026-06-15
+    expires: 2026-09-05
+    lifetime_days: 90
+    scope: read and write on one S3 bucket
+    permissions: [s3.GetObject, s3.PutObject]
+    objective: artifact uploads from CI
+    renewal_url: https://console.aws.amazon.com/iam/
+    remind_days: [14, 3]
+    notes: Rotate in IAM; the old key keeps working until deactivated.
+
+  - id: db-client-cert
+    name: Database client certificate
+    service: PostgreSQL
+    kind: cert
+    domain: postgresql.org
+    created: 2025-09-01
+    expires: 2026-08-20
+    lifetime_days: 365
+    scope: TLS client auth to the analytics replica
+    objective: nightly reporting job
+    remind_days: [30, 7]
+    notes: Issued by the internal CA; renewal needs a new CSR.
+
+  - id: google-refresh
+    name: Google OAuth refresh token
+    service: Google
+    kind: oauth-session
+    account: ci-bot
+    domain: google.com
+    created: 2026-08-10
+    expires: 2026-10-09
+    lifetime_days: 60
+    scope: CI deploy pipeline login
+    objective: unattended deploys
+    renewal_url: https://console.cloud.google.com/apis/credentials
+    remind_days: [7]
+
+  - id: webhook-secret
+    name: Webhook signing secret
+    service: Stripe
+    kind: secret
+    domain: stripe.com
+    created: 2024-03-12
+    expires: never
+    scope: verifies incoming webhook payloads
+    objective: billing events
+    notes: Lives until rotated by hand; no expiry to track.
+
+  - id: vendor-portal
+    name: Vendor portal password
+    service: LegacyVendor
+    kind: other
+    scope: quarterly invoice download
+    objective: finance handoff
+    notes: Expiry policy unknown; the portal forces a reset at random.

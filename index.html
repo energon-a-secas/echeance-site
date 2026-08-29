@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Echeance | Credential Expiry Tracker</title>
+  <meta name="description" content="Track API tokens and credentials before they expire: YAML in and out, an expiry calendar, urgency board, ICS reminders and renewal tutorials">
+  <meta property="og:title" content="Echeance: Credential Expiry Tracker">
+  <meta property="og:description" content="Know which token dies next, and exactly how to renew it">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://echeance.neorgon.com/">
+  <meta property="og:site_name" content="Neorgon">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Echeance: Credential Expiry Tracker">
+  <meta name="twitter:description" content="Know which token dies next, and exactly how to renew it">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://echeance.neorgon.com/">
+  <meta property="og:locale" content="en_US">
+  <meta name="theme-color" content="#040714">
+  <meta property="og:image" content="https://echeance.neorgon.com/og-preview.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Echeance">
+  <meta name="twitter:image" content="https://echeance.neorgon.com/og-preview.jpg">
+  <meta name="neo-repo" content="https://github.com/energon-a-secas/echeance-site">
+  <meta name="neo-version" content="v1.0.0">
+  <meta name="neo-updated" content="updated Aug 2026">
+  <link rel="icon" type="image/x-icon" href="https://cdn.neorgon.org/v1.0.0/favicon.ico" />
+  <!-- Fleet design tokens: canonical, do not redeclare locally (PROJECTS.md section 5) -->
+  <link rel="stylesheet" href="https://cdn.neorgon.org/v1.0.0/styles/base.css">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Neorgon Header Kit (vendored; ?header=live swaps CSS to CDN). Keep after style.css. The kit owns the header. -->
+  <script>(function(){var m=location.search.match(/[?&]theme=([\w-]+)/)||document.cookie.match(/(?:^|;\s*)neo_theme=([\w-]+)/);if(m&&m[1]!=='default')document.documentElement.dataset.theme=decodeURIComponent(m[1]);})();</script>
+  <link rel="stylesheet" href="css/neorgon-header.css">
+  <link rel="stylesheet" href="css/neorgon-themes.css">
+  <link rel="stylesheet" href="https://cdn.neorgon.org/v1.0.0/header/season.css">
+  <script defer src="js/neorgon-header.js"></script>
+  <link rel="stylesheet" href="css/neorgon-footer.css">
+  <script defer src="js/neorgon-footer.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Echeance",
+    "description": "Track API tokens and credentials before they expire: YAML in and out, an expiry calendar, urgency board, ICS reminders and renewal tutorials",
+    "url": "https://echeance.neorgon.com/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Organization", "name": "Neorgon", "url": "https://neorgon.com/" }
+  }
+  </script>
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="header-bar" data-header-mode="app">
+    <div class="header-logo">
+      <a href="./" class="header-title-link">
+        <img src="https://cdn.neorgon.org/v1.0.0/energon-classic-logo.png" class="header-logo-img" alt="">
+        <div class="header-title-wrap">
+          <h1>Echeance</h1>
+          <div class="header-subtitle">Credential inventory, expiry board, renewal steps</div>
+        </div>
+      </a>
+    </div>
+
+    <div class="header-right">
+      <div class="header-actions">
+        <button class="btn btn--ghost btn--sm" id="exportIcsBtn" data-keep-mobile>Export .ics</button>
+        <button class="btn btn--ghost btn--sm" id="exportYamlBtn">Export YAML</button>
+      </div>
+      <a class="header-home" href="https://neorgon.com/" title="neorgon.com" aria-label="Neorgon home">
+        <svg class="nh-hub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.4"/>
+          <ellipse cx="12" cy="12" rx="8.4" ry="3" transform="rotate(-18 12 12)"/>
+          <g class="nh-orbit">
+            <path d="M17.5 4.2 14.2 2.7l.9 1.4-.6 1.1z" fill="currentColor" stroke="none"/>
+            <circle cx="12.6" cy="3" r=".7" fill="currentColor" stroke="none" opacity=".55"/>
+            <circle cx="11.1" cy="3.3" r=".55" fill="currentColor" stroke="none" opacity=".35"/>
+            <circle cx="9.8" cy="3.7" r=".4" fill="currentColor" stroke="none" opacity=".2"/>
+          </g>
+        </svg>
+      </a>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="shell">
+      <nav class="shell__rail" aria-label="Section" id="rail">
+        <button class="nav-link rail__link" data-view="board" aria-current="true">Board</button>
+        <button class="nav-link rail__link" data-view="table">Table</button>
+        <button class="nav-link rail__link" data-view="calendar">Calendar</button>
+        <button class="nav-link rail__link" data-view="tutorials">Tutorials</button>
+        <button class="nav-link rail__link" data-view="yaml">YAML</button>
+      </nav>
+
+      <div class="shell__main stack stack--loose">
+
+        <!-- ── Board ─────────────────────────────────────────── -->
+        <section class="view" id="view-board" aria-labelledby="board-title">
+          <div class="section__header">
+            <div class="section__titles">
+              <h2 class="section__title" id="board-title">Expiry board</h2>
+              <p class="section__lead">
+                Every credential, sorted by time left. Data source:
+                <span class="source-badge" id="sourceBadge">loading</span>
+              </p>
+            </div>
+            <div class="toolbar">
+              <div class="seg" role="group" aria-label="Group credentials by">
+                <button class="seg__btn" data-groupby="urgency">Urgency</button>
+                <button class="seg__btn" data-groupby="service">Service</button>
+                <button class="seg__btn" data-groupby="kind">Kind</button>
+              </div>
+              <button class="btn btn--ghost btn--sm" id="remoteIconsBtn"
+                title="Fetch favicons for unrecognized services from Google's favicon endpoint. Off by default: it discloses service names to a third party.">Remote icons: off</button>
+              <button class="btn btn--secondary btn--sm" id="notifyBtn">Enable reminders</button>
+            </div>
+          </div>
+          <div class="stat-strip" id="statStrip" aria-live="polite"></div>
+          <div class="stack stack--tight" id="boardGroups"></div>
+        </section>
+
+        <!-- ── Table ─────────────────────────────────────────── -->
+        <section class="view" id="view-table" aria-labelledby="table-title" hidden>
+          <div class="section__header">
+            <div class="section__titles">
+              <h2 class="section__title" id="table-title">Inventory table</h2>
+              <p class="section__lead">Click a column to sort, click a row for the full record.</p>
+            </div>
+            <div class="toolbar">
+              <input type="search" class="input input--search" id="tableSearch"
+                     placeholder="Filter by name, service, scope" aria-label="Filter credentials">
+            </div>
+          </div>
+          <div class="table-wrap" id="tableWrap"></div>
+        </section>
+
+        <!-- ── Calendar ──────────────────────────────────────── -->
+        <section class="view" id="view-calendar" aria-labelledby="calendar-title" hidden>
+          <div class="section__header">
+            <div class="section__titles">
+              <h2 class="section__title" id="calendar-title">Expiry calendar</h2>
+              <p class="section__lead">Expiry dates on a month grid. Export the same dates as
+                <code>.ics</code> to get alarms in your real calendar.</p>
+            </div>
+            <div class="toolbar">
+              <button class="btn btn--ghost btn--sm" id="calPrev" aria-label="Previous month">&#8592;</button>
+              <button class="btn btn--secondary btn--sm" id="calToday">Today</button>
+              <button class="btn btn--ghost btn--sm" id="calNext" aria-label="Next month">&#8594;</button>
+            </div>
+          </div>
+          <h3 class="cal-month" id="calMonth"></h3>
+          <div class="cal-grid" id="calGrid"></div>
+          <p class="cal-legend">
+            <span class="sev-dot sev-expired"></span> expired
+            <span class="sev-dot sev-critical"></span> 7 days
+            <span class="sev-dot sev-warning"></span> 30 days
+            <span class="sev-dot sev-ok"></span> later
+          </p>
+        </section>
+
+        <!-- ── Tutorials ─────────────────────────────────────── -->
+        <section class="view" id="view-tutorials" aria-labelledby="tutorials-title" hidden>
+          <div class="section__header">
+            <div class="section__titles">
+              <h2 class="section__title" id="tutorials-title">Renewal tutorials</h2>
+              <p class="section__lead">
+                The real steps to obtain, renew and revoke each credential, written down once.
+                Agents can read the whole set at <a href="llms.txt" class="link">llms.txt</a>.
+              </p>
+            </div>
+          </div>
+          <div class="filter-bar" id="tutFilterBar">
+            <input type="search" class="input input--search" id="tutSearch"
+                   placeholder="Filter steps, signals, insights" aria-label="Filter tutorials">
+            <div class="chip-row" id="tutChips" role="group" aria-label="Filter by service"></div>
+          </div>
+          <div id="tutorialList" class="stack stack--tight"></div>
+          <div id="tutorialDetail" hidden></div>
+        </section>
+
+        <!-- ── YAML ──────────────────────────────────────────── -->
+        <section class="view" id="view-yaml" aria-labelledby="yaml-title" hidden>
+          <div class="section__header">
+            <div class="section__titles">
+              <h2 class="section__title" id="yaml-title">YAML in, YAML out</h2>
+              <p class="section__lead">
+                The inventory is one portable YAML document: metadata only, never secret values.
+                Edit here and apply, or import and export files.
+              </p>
+            </div>
+            <div class="toolbar">
+              <button class="btn btn--primary btn--sm" id="yamlApplyBtn">Apply</button>
+              <button class="btn btn--secondary btn--sm" id="yamlImportBtn">Import file</button>
+              <input type="file" id="yamlFileInput" accept=".yaml,.yml,text/yaml" hidden>
+              <button class="btn btn--ghost btn--sm" id="yamlDownloadBtn">Download</button>
+              <button class="btn btn--ghost btn--sm" id="yamlCopyBtn">Copy</button>
+            </div>
+          </div>
+          <div class="yaml-error" id="yamlError" hidden></div>
+          <textarea id="yamlEditor" class="yaml-editor" spellcheck="false"
+                    aria-label="Inventory YAML"></textarea>
+          <div class="toolbar">
+            <button class="btn btn--ghost btn--sm" id="loadLocalBtn">Reload inventory.local.yaml</button>
+            <button class="btn btn--ghost btn--sm" id="loadSampleBtn">Load sample data</button>
+            <button class="btn btn--danger btn--sm" id="clearBtn">Clear saved data</button>
+          </div>
+          <details class="schema-help">
+            <summary>Field reference</summary>
+            <pre class="schema-pre">credentials:
+  - id: convex-cli          # unique slug, required
+    name: Convex CLI auth   # required
+    service: Convex
+    kind: oauth-session     # api-key | oauth-session | ssh-key | ip-whitelist | secret | other
+    account: LucianoAdonis
+    domain: convex.dev      # powers the opt-in remote favicon lookup
+    created: 2026-05-28
+    expires: 2026-08-26     # date, "never", or omit when unknown
+    lifetime_days: 90       # lets "Renewed today" compute the next expiry
+    scope: deploys and schema pushes
+    permissions: [deploy, schema-push]
+    objective: memes-site backend deploys
+    status: active          # active | expired | revoked (derived from dates when omitted)
+    renewal_url: https://dashboard.convex.dev/
+    tutorial: convex-cli    # id of a renewal tutorial
+    remind_days: [14, 3]    # ICS alarm lead times
+    notes: free text</pre>
+          </details>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Credential detail (blocking overlay, filled by render.js) -->
+  <div class="modal" id="credModal" hidden>
+    <div class="modal__backdrop" data-modal-close tabindex="-1" aria-hidden="true"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="credModalTitle" tabindex="-1">
+      <header class="modal__header">
+        <h2 id="credModalTitle">Credential</h2>
+        <button type="button" class="btn btn--ghost btn--icon" data-modal-close aria-label="Close dialog">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </header>
+      <div class="modal__body" id="credModalBody"></div>
+      <footer class="modal__footer" id="credModalFooter"></footer>
+    </div>
+  </div>
+
+  <footer class="neo-footer" data-footer-mode="app">
+    Metadata only: names, dates, scopes. Secret values never belong here, and nothing leaves your browser.
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js" integrity="sha384-+pxiN6T7yvpryuJmE1gM9PX7yQit15auDb+ZwwvJOd/4be2Cie5/IuVXgQb/S9du" crossorigin="anonymous"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
