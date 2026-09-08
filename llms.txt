@@ -165,3 +165,69 @@ Insights:
 
 Links:
 - Steam API key page: https://steamcommunity.com/dev/apikey
+
+## Renew the github-enforcer GitHub token (github-enforcer-token)
+
+Service: GitHub / api-key
+
+Signals:
+- `make -C tooling/github-enforcer check` stops with 401 Bad credentials
+- The enforcer warns at startup that the token is not 40 or 93 characters long
+- Repo policy drift stops being reported, so descriptions, homepages and topics quietly stop being enforced across the fleet
+
+Steps:
+1. Read the length before minting anything. A classic PAT is exactly 40 characters and a fine-grained one is 93. Any other length means the line in .env is malformed and the credential may be perfectly alive, so repair the line first and mint nothing.
+2. Confirm the token itself is dead before replacing it: curl -sS -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/user . A 200 means the token is alive and the fault is elsewhere; a 401 means it is genuinely gone.
+3. Mint the replacement at github.com/settings/tokens. A classic token needs the `repo` scope. A fine-grained token needs, on the energon-a-secas repos: Administration read and write, Contents read and write, Metadata read, Pages read and write, Pull requests read and write.
+4. Install it by replacing the whole GITHUB_TOKEN line in `tooling/github-enforcer/.env`. Paste it as one line with nothing after it: no trailing comment, no wrapped remainder, no second value.
+5. Restrict the file: `chmod 600 tooling/github-enforcer/.env`. Gitignored is not the same as private, and this token can delete repositories.
+6. Record the new expiry date on the inventory entry github-enforcer-token, so the reminder fires before the next failure instead of after it.
+
+Verify: `make -C tooling/github-enforcer check-repo REPO=energon-a-secas/neorgon-site` prints all checks passed, with no length warning at startup.
+
+Revoke or rotate: Delete it under github.com/settings/tokens. A classic token is not scoped to a repo, so it dies everywhere at once.
+
+Insights:
+- 401 Bad credentials does not mean expired. On 2026-09-05 the .env line held a valid 40-character classic PAT with 75 characters of pasted text stuck to the end, so the whole 115-character string went out and GitHub rejected it. The token had been alive the entire time, and this inventory had already recorded the credential as dead and told a future reader to mint a replacement. Check the length before believing the 401.
+- The enforcer now says this itself: it warns at startup on a wrong-length value, and on a 401 it prints malformed rather than expired whenever the length matches no documented shape.
+- Prefer a fine-grained token. A classic one carries every scope you tick across every repo the account can reach, delete_repo included, which is a wide blast radius for a tool whose job is editing descriptions and topics.
+- Pages read and write is the permission most easily left off, and its absence used to pass as success: GitHub answers 404 rather than 403 for a Pages endpoint the token cannot see, which is the same answer as Pages being switched off. The enforcer now separates the two and warns when a repo has Pages enabled but the token cannot read it.
+
+Links:
+- GitHub personal access tokens: https://github.com/settings/tokens
+- Permissions required for fine-grained tokens: https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens
+
+## Obtain or reuse a Reddit Data API app (Bouquin) (reddit-data-api-app)
+
+Service: Reddit / api-key
+
+Signals:
+- bouquin.neorgon.com reports its last scan came from the archive, not from Reddit
+- `npx convex run ingest:scan --prod` returns status skipped, or a token error mentioning 401
+- Reddit's app-registration deadline (2026-09-30) is approaching and an existing app is not registered
+
+Steps:
+1. Know what changed before touching anything. Reddit closed self-service Data API registration on 2025-11-11 (r/redditdev post 1oug31u, 'Introducing the Responsible Builder Policy'); every new OAuth app is approved by a person, and personal read-only requests reportedly wait weeks. The site does not depend on this: `convex/ingest.ts` reads the Arctic Shift archive until the env vars exist.
+2. Check for an app you already own: log in and open reddit.com/prefs/apps. An app of type script or web app listed under 'developed applications' shows its client id under its name and its secret in the edit view. That is the fast path.
+3. If one exists, register it at developers.reddit.com/app-registration before 2026-09-30 (asked for in the 2026-08-05 admin post 1vgbm9c, 'to remain in good standing'). Describe it as personal, non-commercial, read-only, one subreddit, about 60 requests per hour.
+4. If none exists, file the access request at support.reddithelp.com/hc/en-us/requests/new?ticket_form_id=14868593862164 (the link Reddit's own 'Accessing Reddit Data' article gives for non-commercial use), and note the date on this inventory entry. Trying 'create another app' on prefs/apps costs nothing, but r/redditdev has reported that form resetting silently or failing with a 500 since July 2026.
+5. With an id and secret in hand, run `bash scripts/setup-reddit.sh` from `projects/bouquin-site`. It captures the id, the secret (hidden), and your username for the User-Agent `web:com.neorgon.bouquin:v1.0 (by /u/NAME)`, writes them to the gitignored `.env`, and runs `npx convex env set` for REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET and REDDIT_USER_AGENT on the deployment you choose (prod, dev or both).
+6. Nothing else changes: the next cron run picks the Reddit source by itself because `credsFromEnv()` now returns a value.
+
+Verify: `npx convex run ingest:scan --prod '{"maxThreads": 3}'` returns status ok and source reddit, and the stats line under the site's hero says the last scan came from Reddit.
+
+Revoke or rotate: Delete the app at reddit.com/prefs/apps (the id and secret die together), then `npx convex env remove REDDIT_CLIENT_ID REDDIT_CLIENT_SECRET REDDIT_USER_AGENT --prod`; the next scan falls back to the archive with no other change.
+
+Insights:
+- The credential is optional for the site and only improves it: live scores and comment counts instead of the archive's 16-minute lag and 36-hour score refresh. Do not block a launch on it.
+- App-only OAuth (grant_type=client_credentials) is all the cron uses, so no Reddit password ever reaches Convex; the token endpoint answers 401, not 403, from outside Reddit, which is how you tell a dead credential from a network block. The unauthenticated .json endpoints answer 403 to everything now and the RSS feed is limited to one request per minute, so neither is a fallback worth building.
+- Reddit blocks generic User-Agents at the network edge. The 403 that produces looks like a credential failure and is not one; check the User-Agent before rotating anything.
+- Token lifetime is 24 hours and the cron caches it in the kv table; a 401 on a read drops the cached token so the next run mints a fresh one. A 401 on the token endpoint itself is the id or secret.
+- Two deadlines live on this entry: the 2026-09-30 registration of any existing app, and, after that, Reddit's stated plan to move third-party apps onto its Developer Platform 'gradually' with nothing changing in 2026. Re-read the r/redditdev admin posts before the next renewal rather than this note.
+
+Links:
+- Your Reddit apps: https://www.reddit.com/prefs/apps
+- App registration (deadline 2026-09-30): https://developers.reddit.com/app-registration
+- Data API access request form: https://support.reddithelp.com/hc/en-us/requests/new?ticket_form_id=14868593862164
+- Responsible Builder Policy: https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy
+- Research report (fleet): https://github.com/energon-a-secas/bouquin-site
