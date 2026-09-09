@@ -265,3 +265,39 @@ Links:
 - Clerk dashboard: https://dashboard.clerk.com/
 - Deploy to production: https://clerk.com/docs/guides/development/deployment/production
 - Development vs production instances: https://clerk.com/docs/guides/development/managing-environments
+
+## Google sign-in for a Clerk production instance (google-oauth-clerk)
+
+Service: Google Cloud / api-key
+
+Signals:
+- The Google button returns Google's own error: 'Missing required parameter: client_id', Error 400 invalid_request
+- Google sign-in works for you and silently fails for everyone else
+- Clerk's OAuth verification refuses the consent screen over the privacy policy or terms URL
+
+Steps:
+1. Confirm the cause from a terminal before touching a dashboard. POST an anonymous sign-in attempt to the Frontend API and read the Google URL back: the client_id is empty when no credential is configured. Same command verifies the fix afterwards.
+2. Set the Clerk Dashboard's instance switcher to Production first. Dashboard links resolve to whichever instance you were last in, and configuring development by mistake is silent: development works on Clerk's shared credentials, so nothing errors and production stays broken.
+3. Clerk Dashboard, SSO connections (this page merged the old 'Social Connections' and 'Enterprise Connections' in October 2024, so older tutorials name screens that no longer exist). Select the existing Google connection rather than adding one, then turn on 'Use custom credentials'.
+4. Copy the Authorized Redirect URI the panel then shows, and leave that tab open.
+5. Google Cloud Console, APIs and Services, Credentials, Create Credentials, OAuth client ID, application type Web application. Paste Clerk's redirect URI into Authorized redirect URIs, and the site origin into Authorized JavaScript origins.
+6. Create. Google shows the client id and client secret once. Copy both now.
+7. Back in Clerk, paste both into the connection and save. Leave the Scopes field empty: Clerk already sends what sign-in needs, and that field is for additions.
+8. In Google Cloud, set the OAuth app's publishing status to 'In production'.
+
+Verify: Re-run the sign-in probe and confirm client_id is no longer empty, then sign in through the Account Portal rather than your own frontend, which removes your site from the equation.
+
+Revoke or rotate: Delete the OAuth client in Google Cloud Console, Credentials. Sign-in with Google breaks immediately for everyone, so create the replacement first if you are rotating rather than retiring.
+
+Insights:
+- A DEVELOPMENT Clerk instance uses Clerk's own shared Google credentials; a PRODUCTION one refuses to. That is why the button works for months and breaks the day you promote, with an error that points at Google rather than at Clerk.
+- THE CLIENT SECRET IS SHOWN ONCE. There is no way to read it again later. Losing it means creating a new client, not recovering the old one.
+- Publishing status 'Testing' caps the app at 100 users and only lets explicitly listed test users in. It will work perfectly for whoever set it up and fail for everyone else, with no error anyone can see. This is the single easiest thing to leave half-done.
+- The three scopes sign-in needs (openid, userinfo.email, userinfo.profile) are Google's basic non-sensitive ones, so going to production triggers no verification review. Asking for anything more does.
+- Verification still checks the consent screen's links: the homepage must link the privacy policy, the policy URL must respond, and the page must actually describe what is collected. A stub page fails on the third count even when the first two pass.
+- No billing account is needed. Creating an OAuth client and using it for sign-in is free.
+
+Links:
+- Google Cloud credentials: https://console.cloud.google.com/apis/credentials
+- Clerk SSO connections: https://dashboard.clerk.com/last-active?path=user-authentication/sso-connections
+- Clerk's Google social connection guide: https://clerk.com/docs/guides/configure/auth-strategies/social-connections/google
