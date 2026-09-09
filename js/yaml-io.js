@@ -7,7 +7,11 @@
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const KINDS = ['api-key', 'oauth-session', 'ssh-key', 'ip-whitelist', 'secret', 'cert', 'other'];
-const STATUSES = ['active', 'expired', 'revoked', 'retired'];
+// `pending` is a credential the fleet has decided to obtain and has not got yet.
+// It is a real state the other four cannot express: `expired` claims it once
+// worked, `active` claims it works now. Omitting it made one entry reject the
+// whole file, which is a silent blank board rather than a visible error.
+const STATUSES = ['active', 'pending', 'expired', 'revoked', 'retired'];
 
 // Canonical key order for serialization, so exports stay diff-friendly.
 const KEY_ORDER = [

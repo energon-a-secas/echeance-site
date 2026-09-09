@@ -231,3 +231,34 @@ Links:
 - Data API access request form: https://support.reddithelp.com/hc/en-us/requests/new?ticket_form_id=14868593862164
 - Responsible Builder Policy: https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy
 - Research report (fleet): https://github.com/energon-a-secas/bouquin-site
+
+## Recover or promote the Clerk instance (clerk-instance)
+
+Service: Clerk / other
+
+Signals:
+- Sign-in fails on a Clerk-backed site, or Convex rejects the JWT as an untrusted issuer
+- You need the publishable key for a new site and cannot remember where it comes from
+- Sign-ups stop working after 100 accounts
+
+Steps:
+1. You almost never need the dashboard. The publishable key is PUBLIC by design and already ships in the fleet: copy the `clerk-publishable-key` meta tag from an existing site's index.html (memes, character-sheet or buyhacks).
+2. The issuer domain is not stored separately anywhere: it is base64 inside the key. Decode the part after `pk_test_` or `pk_live_` and strip the trailing `$` to get the Frontend API host.
+3. Every Convex deployment must set the same host as `CLERK_JWT_ISSUER_DOMAIN`, and each app's convex/auth.config.ts must name it. A site whose config disagrees will reject every token.
+4. For a NEW key, or to promote: dashboard.clerk.com, then API keys for the key, or Domains to create a production instance. Promotion needs a domain you own and five DNS records it will show you, which are per-instance and not knowable in advance.
+
+Verify: Sign in on the site, then confirm a Convex function that calls `ctx.auth.getUserIdentity()` returns a subject rather than null.
+
+Revoke or rotate: Rotating the publishable key means updating every site's meta tag and every Convex issuer at once; there is no partial cutover. Clerk documents that the publishable key does not need rotating even though it is public.
+
+Insights:
+- A development instance is capped at 100 users and its users CANNOT be moved to a production instance. Every account created before promotion is lost, and Convex rows keyed by the Clerk subject are orphaned when new user ids are issued. Promote before inviting anyone, not after.
+- A production instance is free on Clerk's Hobby plan. Pro is forced only by paid features, none of which the fleet uses.
+- Promotion changes the Frontend API host from the accounts.dev one to a subdomain of your own domain, so every Content-Security-Policy naming the old host stops matching. Grep the fleet before cutting over; it appears far more widely than the sites that actually run Clerk.
+- If the domain already sends mail, Clerk's SPF record must be MERGED into the existing one. RFC 7208 allows exactly one v=spf1 record per domain, and adding a second breaks mail delivery outright.
+- A stalled certificate at promotion is usually a CAA record on the domain; an empty `dig <domain> CAA` means you are clear.
+
+Links:
+- Clerk dashboard: https://dashboard.clerk.com/
+- Deploy to production: https://clerk.com/docs/guides/development/deployment/production
+- Development vs production instances: https://clerk.com/docs/guides/development/managing-environments

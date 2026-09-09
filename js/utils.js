@@ -92,10 +92,11 @@ export function fmtDate(str) {
 
 // ── Severity ─────────────────────────────────────────────────
 
-export const SEVERITY_ORDER = ['expired', 'critical', 'warning', 'ok', 'unknown', 'never', 'retired'];
+export const SEVERITY_ORDER = ['expired', 'pending', 'critical', 'warning', 'ok', 'unknown', 'never', 'retired'];
 
 export const SEVERITY_LABEL = {
   expired: 'Expired',
+  pending: 'Not obtained yet',
   critical: 'Next 7 days',
   warning: 'Next 30 days',
   ok: 'Later',
@@ -107,6 +108,7 @@ export const SEVERITY_LABEL = {
 /** Classify one normalized credential entry. */
 export function severity(cred) {
   if (cred.status === 'revoked' || cred.status === 'retired') return 'retired';
+  if (cred.status === 'pending') return 'pending';
   if (cred.status === 'expired' && daysUntil(cred.expires) === null) return 'expired';
   if (cred.expires === 'never') return 'never';
   const days = daysUntil(cred.expires);
