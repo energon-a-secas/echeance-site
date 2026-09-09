@@ -24,16 +24,19 @@ Signals:
 - Convex deploys have been blocked since the last login went stale
 
 Steps:
-1. Open a real interactive terminal. The login is a browser OAuth flow; it cannot run from a non-interactive session, so an agent must hand this step to a person.
-2. From the Convex project directory (for the fleet: `projects/memes-site`), run `npx convex login`.
-3. Complete the browser prompt with the Convex account.
+1. Diagnose first, and do not assume expiry: `npx convex login status` prints the account's reachable teams. If the team listed is not the one that owns the project, the token is fine and belongs to the WRONG ACCOUNT, which is a different fix.
+2. Open a real interactive terminal. The login is a browser OAuth flow; it cannot run from a non-interactive session, so an agent must hand this step to a person.
+3. From the Convex project directory (for the fleet: `projects/memes-site`), run `npx convex login --force`.
+4. Complete the browser prompt with the account that owns the project's team, not merely any Convex account.
 
 Verify: `npx convex dev --once` from the project directory completes without an auth error.
 
 Revoke or rotate: Log out with `npx convex logout`, or revoke the session from the Convex dashboard settings.
 
 Insights:
-- The CLI token goes stale silently: nothing warns before a deploy fails. The fleet's token minted 2026-05-28 was dead by late August, so treat roughly 90 days as the working lifetime and record the login date.
+- `npx convex login` SHORT-CIRCUITS. With any token already in ~/.convex/config.json it answers 'this device has previously been authorized and is ready for use' and changes nothing, without checking which account that token belongs to. Only `--force` re-authorizes. This cost two sessions in 2026-09.
+- 'You don't have access to the selected project' is an ACCOUNT mismatch, not an expiry. Convex says the same thing whether the project moved, was deleted, or your token is for another account; `login status` is what tells them apart.
+- The fleet's own entry claimed a ~90 day token lifetime, inferred from the config file's date. It was wrong: the token had not expired at all. Do not infer a lifetime from a file mtime.
 - Renewal is the one step in the fleet's deploy chain that cannot be automated; schedule it, do not discover it.
 
 Links:
