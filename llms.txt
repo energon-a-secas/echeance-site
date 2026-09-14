@@ -308,7 +308,7 @@ Service: Clerk / secret
 
 Signals:
 - A Neorgon account was deleted in Clerk and its Vitrina profile or books are still in the production `profiles` or `entries` table
-- The endpoint's Message Attempts in the Clerk Dashboard show 503 (the secret is not set on the deployment) or 400 (a wrong secret, or a secret set on the wrong deployment)
+- The endpoint's Message Attempts in the Clerk Dashboard show 503 (`CLERK_WEBHOOK_SECRET` is not set on the deployment the endpoint URL names, for example because it was set on dev instead) or 400 (the value there is not this endpoint's signing secret)
 - Svix reports the endpoint as disabled
 - The inventory row vitrina-clerk-webhook-secret still says pending, while neorgon.com/privacy already promises that deleting a Neorgon account erases its Vitrina data, normally within a day
 
@@ -332,7 +332,7 @@ Insights:
 - The example event is safe on production. It names a user id no Vitrina account has, so the erasure it starts finds no profile and no books, and `purge:sweep` deletes its `erasures` row about 5 minutes later. A second example inside those 5 minutes is answered 200 and starts nothing.
 - Failures are retried, not lost. Svix retries after 5 seconds, 5 minutes, 30 minutes, 2 hours, 5 hours, then 10 hours twice, and disables an endpoint that keeps failing for 5 days. The 503 while the secret is unset is deliberate: a deletion that lands between Create and setting the secret is delivered again once it is set. An erasure that throws answers 500 and is retried the same way, and erasing twice is safe.
 - `npx convex env get` ends its output with a newline and `pbpaste` does not. Without `tr -d '\n'` on both sides the hashes never match, and a correct secret looks wrong.
-- Secrets from Clerk do not expire, so the inventory row has no date. What goes stale is the pairing: every new endpoint (a rotation, or one recreated after a delete) has a new secret, and the old value on the deployment then fails every delivery with 400.
+- A webhook signing secret does not expire, so the inventory row says `expires: never`. What goes stale is the pairing: every new endpoint (a rotation, or one recreated after a delete) has a new secret, and the old value on the deployment then fails every delivery with 400.
 - If the endpoint page offers to rotate the secret in place instead, Svix keeps signing with the old secret as well for 24 hours by default, sending one `v1` signature per secret. Vitrina's `convex/lib/webhookVerify.ts` accepts any one that verifies, so there is no gap as long as the new value is set within that day.
 
 Links:
