@@ -261,3 +261,72 @@ tutorials:
         url: https://dashboard.clerk.com/last-active?path=user-authentication/sso-connections
       - label: Clerk's Google social connection guide
         url: https://clerk.com/docs/guides/configure/auth-strategies/social-connections/google
+
+  - id: vitrina-clerk-webhook
+    title: Connect or rotate the Vitrina Clerk webhook secret
+    service: Clerk
+    applies_to: secret
+    signals:
+      - "A Neorgon account was deleted in Clerk and its Vitrina profile or books are still in the production `profiles` or `entries` table"
+      - "The endpoint's Message Attempts in the Clerk Dashboard show 503 (the secret is not set on the deployment) or 400 (a wrong secret, or a secret set on the wrong deployment)"
+      - "Svix reports the endpoint as disabled"
+      - "The inventory row vitrina-clerk-webhook-secret still says pending, while neorgon.com/privacy already promises that deleting a Neorgon account erases its Vitrina data, normally within a day"
+    steps:
+      - "Find the deployment first: `make -C projects/vitrina-site where` prints the production URL the pages call, `https://fantastic-chickadee-557.convex.cloud` on 2026-09-14. The webhook goes to the same name on the `.convex.site` host: `https://fantastic-chickadee-557.convex.site/clerk-users-webhook`. The `.convex.cloud` host does not serve HTTP actions, and the `CONVEX_DEPLOYMENT` line `where` also prints is the dev deployment, not this one."
+      - "In the Clerk Dashboard, set the instance switcher to Production, open Webhooks and select Add Endpoint. Dashboard links open whichever instance you used last, and an endpoint on the development instance never hears about a production deletion."
+      - "Paste the URL into Endpoint URL, select only `user.deleted` under Message Filtering, and select Create. Clerk opens the endpoint's settings page; leave it open."
+      - "Reveal and copy the Signing Secret on that page, `whsec_` prefix included."
+      - "Set it on production in the same sitting, from `projects/vitrina-site` with the secret on the clipboard: `pbpaste | npx convex env set --prod CLERK_WEBHOOK_SECRET`. Piping keeps it out of shell history. The Convex dashboard works too: project vitrina-site, the Production deployment, Settings, Environment Variables."
+      - "Check it landed without printing it: `npx convex env get --prod CLERK_WEBHOOK_SECRET | tr -d '\\n' | shasum -a 256`, then `pbpaste | tr -d '\\n' | shasum -a 256`. The hashes must match. Clear the clipboard afterwards with `pbcopy < /dev/null`. Never `npx convex env list`: it prints every value on the deployment."
+      - "On the endpoint page's Testing tab, send an example `user.deleted` and confirm Message Attempts shows 200 (Succeeded)."
+      - "Update the inventory row vitrina-clerk-webhook-secret: status active, and a created date."
+    verify: "The example `user.deleted` shows 200 in the endpoint's Message Attempts, and the two hashes match. A hash beginning `e3b0c442` is the hash of empty input: the variable is not set on the deployment you asked."
+    revoke: "Clerk's documented rotation adds a second endpoint with the same URL and the `user.deleted` filter, sets its secret as `CLERK_WEBHOOK_SECRET`, checks it the same way, then deletes the old endpoint from its ... menu. While both exist the old endpoint's deliveries answer 400 and are retried; deleting it stops them. To retire the webhook, delete the endpoint first and only then run `npx convex env remove --prod CLERK_WEBHOOK_SECRET`; in the other order the endpoint spends 5 days failing with 503 before Svix disables it."
+    insights:
+      - "A 200 proves the secret by itself. The handler answers 503 while `CLERK_WEBHOOK_SECRET` is unset; 400 when the `svix-id`, `svix-timestamp` or `svix-signature` header is missing, the timestamp is more than 300 seconds from the deployment's clock, or the signature does not verify; and 200 only after verification. A 400 on the example event is the value or the deployment it went to, so compare the hashes before suspecting the code."
+      - "Only a verified `user.deleted` whose `data.id` matches `^user_[A-Za-z0-9]+$` erases anything, through `purge:eraseSubject`, the same path Delete my Vitrina data takes. Any other verified event, and signed JSON that is not an event, is answered 200 and ignored, so a filter left wider than `user.deleted` costs deliveries, never data."
+      - "The example event is safe on production. It names a user id no Vitrina account has, so the erasure it starts finds no profile and no books, and `purge:sweep` deletes its `erasures` row about 5 minutes later. A second example inside those 5 minutes is answered 200 and starts nothing."
+      - "Failures are retried, not lost. Svix retries after 5 seconds, 5 minutes, 30 minutes, 2 hours, 5 hours, then 10 hours twice, and disables an endpoint that keeps failing for 5 days. The 503 while the secret is unset is deliberate: a deletion that lands between Create and setting the secret is delivered again once it is set. An erasure that throws answers 500 and is retried the same way, and erasing twice is safe."
+      - "`npx convex env get` ends its output with a newline and `pbpaste` does not. Without `tr -d '\\n'` on both sides the hashes never match, and a correct secret looks wrong."
+      - "Secrets from Clerk do not expire, so the inventory row has no date. What goes stale is the pairing: every new endpoint (a rotation, or one recreated after a delete) has a new secret, and the old value on the deployment then fails every delivery with 400."
+      - "If the endpoint page offers to rotate the secret in place instead, Svix keeps signing with the old secret as well for 24 hours by default, sending one `v1` signature per secret. Vitrina's `convex/lib/webhookVerify.ts` accepts any one that verifies, so there is no gap as long as the new value is set within that day."
+    links:
+      - label: Clerk webhooks
+        url: https://dashboard.clerk.com/~/webhooks
+      - label: Rotate a webhook signing secret (Clerk)
+        url: https://clerk.com/docs/guides/secure/rotate-api-keys
+      - label: Svix retry schedule
+        url: https://docs.svix.com/retries
+      - label: Convex dashboard
+        url: https://dashboard.convex.dev/
+
+  - id: vitrina-admin-subjects
+    title: Set the Vitrina admin ids (ADMIN_SUBJECTS)
+    service: Convex
+    applies_to: other
+    signals:
+      - "An `admin:` function on Vitrina answers `not-admin` for you"
+      - "Public shelves are about to open: `npx convex env set --prod PUBLISHING open` must not run before this list is set"
+      - "A shelf has to be hidden or erased (an abuse report, or an erasure request for an account that is already gone) and nobody is listed to do it"
+    steps:
+      - "Copy your Clerk user id from the PRODUCTION instance: Clerk Dashboard, instance switcher on Production, Users, select the account, copy the id that starts with `user_`. An id from the development instance matches nobody on production, because Clerk users do not move between instances."
+      - "Confirm the deployment: `make -C projects/vitrina-site where` prints the production URL the pages call (`fantastic-chickadee-557` on 2026-09-14). In the Convex dashboard it is the Production deployment of project vitrina-site."
+      - "Set the list from `projects/vitrina-site`: `npx convex env set --prod ADMIN_SUBJECTS user_...`. Several admins are one comma-separated value, `user_a,user_b`, and setting it again replaces the whole list. The dashboard works too: the Production deployment, Settings, Environment Variables."
+      - "Check it landed without listing the deployment: `npx convex env get --prod ADMIN_SUBJECTS | tr -d '\\n' | shasum -a 256` against `printf '%s' 'user_...' | shasum -a 256` over exactly the text you set. The value is not a secret, but `npx convex env list` would print the secrets stored beside it."
+      - "Only after this, and after the decision to open publishing, run `npx convex env set --prod PUBLISHING open`."
+    verify: "The two hashes match. To prove the gate itself, call `admin:releaseHandle` as your subject with a handle nobody holds: `npx convex run --prod --identity '{\"subject\":\"user_...\",\"issuer\":\"https://clerk.neorgon.com\"}' admin:releaseHandle '{\"handle\":\"no-such-hold\"}'`. A listed id gets ok true with released false, anyone else gets code not-admin, and nothing changes either way."
+    revoke: "Set the list again without the id; `npx convex env remove --prod ADMIN_SUBJECTS` leaves nobody an admin, which is safe. No deploy is needed, because the handlers read `process.env.ADMIN_SUBJECTS` on every call. Deleting someone's Clerk account stops them signing in but leaves their id listed here, so remove it in both places."
+    insights:
+      - "The list gates five mutations: `admin:setSuspended` and `admin:purgeByHandle` by handle; `admin:setSubjectSuspended` and `admin:purgeBySubject` by Clerk user id, for a shelf that never had a handle or a suspended person who already erased their data; and `admin:releaseHandle`, which lifts a 30-day hold early. Each checks the caller before reading anything, so an unlisted caller, signed out included, gets `not-admin` and learns nothing about whether a handle exists."
+      - "An unset or empty list means nobody is an admin, never everybody. Matching is exact against the Convex token's subject, which is the Clerk user id; spaces around commas and empty items are ignored, and an email or a username matches nobody. `user_a, user_b` works the same as `user_a,user_b` but hashes differently, so a hash mismatch can be spacing rather than a wrong id."
+      - "There is no admin page. Vitrina's `js/backend.js` names the five functions and nothing calls them; an admin runs them as a listed subject, from the command line as in the verify step, or from the Convex dashboard's function runner with Act as a user."
+      - "The gate trusts `ctx.auth`. A browser cannot forge a subject, but anyone with deploy access to the Convex project can act as any subject with `--identity` or Act as a user, so the real set of admins is this list plus the Convex team."
+      - "Never put a synthetic id on production. Dev lists `user_vitrina_dev_admin` for Vitrina's `scripts/convex_smoke.py --dev`, and the production smoke run refuses to start if its own subject, `user_vitrina_smoke`, is listed, because it ends by erasing everything that subject owns."
+      - "Publishing ships closed, and this list is the one setting it needs first. Once shelves are public, hiding a reported one or honouring an erasure request needs a listed admin, and the privacy and terms pages already say the operator can do both."
+    links:
+      - label: Clerk users
+        url: https://dashboard.clerk.com/~/users
+      - label: Convex dashboard
+        url: https://dashboard.convex.dev/
+      - label: Acting as a user in the Convex dashboard
+        url: https://docs.convex.dev/dashboard/deployments/functions
