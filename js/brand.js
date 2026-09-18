@@ -5,18 +5,31 @@
 //   3. Opt-in remote favicons (Google s2) for services with no local mark.
 // Tier 3 is DEFAULT OFF because it discloses every service name in the
 // visitor's inventory to a third party, and the footer promises otherwise.
+//
+// Adding a mark, so a new service does not sit on tier 2 forever:
+//   curl -s https://cdn.simpleicons.org/<slug> -o assets/brands/<slug>.svg
+// then add the lowercased service string to SLUGS below. The CDN's default
+// colour is the brand's own, which is what every vendored file already
+// carries; the badge sits on a near-white plate, so no recolouring is needed.
 
 import { escHtml } from './utils.js';
 
 const REMOTE_KEY = 'echeance-remote-icons';
 
 // Normalized service string -> vendored slug in assets/brands/<slug>.svg.
-// Simple Icons carries no AWS, Slack or OpenAI mark (trademark removals);
-// those fall through to the letter badge or the remote tier.
+// Simple Icons carries no AWS, Slack, OpenAI or Bing mark (trademark
+// removals); those fall through to the letter badge or the remote tier.
+// A service with no mark of its own wears its issuer's: an AI Studio key is
+// a Gemini key, and an IGDB client is issued by Twitch.
 const SLUGS = {
   google: 'google',
   'google cloud': 'googlecloud',
   gcp: 'googlecloud',
+  'google search console': 'googlesearchconsole',
+  gsc: 'googlesearchconsole',
+  'google ai studio': 'googlegemini',
+  'google gemini': 'googlegemini',
+  gemini: 'googlegemini',
   github: 'github',
   gitlab: 'gitlab',
   cloudflare: 'cloudflare',
@@ -30,6 +43,9 @@ const SLUGS = {
   steam: 'steam',
   'valve steam': 'steam',
   valve: 'steam',
+  twitch: 'twitch',
+  igdb: 'twitch',
+  reddit: 'reddit',
   docker: 'docker',
   notion: 'notion',
   vercel: 'vercel',
@@ -38,9 +54,17 @@ const SLUGS = {
   claude: 'anthropic',
   npm: 'npm',
   convex: 'convex',
+  clerk: 'clerk',
   digitalocean: 'digitalocean',
   supabase: 'supabase',
   firebase: 'firebase',
+  airtable: 'airtable',
+  cloudinary: 'cloudinary',
+  'moonshot ai': 'moonshotai',
+  moonshot: 'moonshotai',
+  kimi: 'moonshotai',
+  'remove.bg': 'removedotbg',
+  removebg: 'removedotbg',
 };
 
 export function remoteIconsEnabled() {
