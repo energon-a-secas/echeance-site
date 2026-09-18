@@ -373,3 +373,286 @@ Links:
 - Clerk users: https://dashboard.clerk.com/~/users
 - Convex dashboard: https://dashboard.convex.dev/
 - Acting as a user in the Convex dashboard: https://docs.convex.dev/dashboard/deployments/functions
+
+## Rotate the shared Airtable personal access token (airtable-pat)
+
+Service: Airtable / api-key
+
+Signals:
+- A migration or image script exits on a 401 or 403 from `api.airtable.com`
+- The token was served publicly, or is sitting hardcoded in a script, and has to be replaced rather than merely hidden
+- One site's migration works and another's fails: the PAT is scoped per base, not per account
+
+Steps:
+1. Decide the blast radius first. This one token is read by three sites, so replacing it fixes and breaks all three at once. Know which scripts read it before you delete anything.
+2. Create the replacement at <https://airtable.com/create/tokens>: name it per consumer, add the narrowest scopes the script needs (`data.records:read`, plus `data.records:write` only for the image and metadata migrations, plus `schema.bases:read` if it discovers tables), and grant access to the specific bases rather than to all workspaces.
+3. Copy the value once. Airtable shows a PAT exactly once at creation and never again; there is no reveal.
+4. Put it where the consumer reads it and nowhere else: a gitignored `.env` for local scripts, or `npx convex env set AIRTABLE_PAT ...` for anything running in a Convex action. Never a literal in a `scripts/*.mjs` file.
+5. Only then delete the old token from the same page. Deletion is the step that actually ends the exposure; every earlier step just stops making it worse.
+6. Scrub the source: `grep -rn 'pat[0-9a-zA-Z]' scripts/` in each repo, and replace any hit with `process.env.AIRTABLE_PAT`, with an exit when it is unset.
+
+Verify: A read call returns records against the new token, and `grep -rnE 'pat[0-9a-zA-Z]{10,}' scripts/` is empty in all three repos. Then confirm the old token is gone from the tokens page, which is the only place that can prove it.
+
+Revoke or rotate: Delete the token at <https://airtable.com/create/tokens>. There is no disable-but-keep state, so deletion is both the revoke and the rotate.
+
+Insights:
+- REMOVING A TOKEN FROM A FILE IS NOT ROTATION. This token was served publicly as a plain string inside a migration script from two live domains, and the fix applied at the time was a hosting change that stopped serving the file. The value itself stayed valid, stayed in the working tree, and stayed in git history under commits that are still reachable. Anyone who fetched it during the exposure window still holds a working token. Only deleting it at Airtable ends that.
+- Assume it is unrotated until the tokens page says otherwise. Two separate audits, months apart, both concluded rotation was unverifiable from inside the repo and both recommended treating it as live. No repo can answer this question; only the Airtable account can.
+- A PAT can be created with or without an expiry date. One created without expiry never appears in any renewal report, which is why an entry for it in an inventory is the only thing that surfaces it at all.
+- Scope it to the bases it needs. The old token's scope is unknown from the repo side, and a token that can read every base turns one leaked script into an account-wide disclosure.
+
+Links:
+- Airtable personal access tokens: https://airtable.com/create/tokens
+- Airtable PAT scopes reference: https://airtable.com/developers/web/api/scopes
+
+## Provision or rotate a Search Console service account key (gsc-service-account)
+
+Service: Google Search Console / secret
+
+Signals:
+- A search-query connector returns 403 on every call, with no clue which of three separate permissions is missing
+- A new site property needs API reads and there is no service account for it yet
+- A private key was printed to a terminal or into a model's context and has to be replaced
+
+Steps:
+1. Verify the property first, and note WHICH KIND you verified. A domain property (`sc-domain:example.com`, verified by DNS TXT) and a URL-prefix property (`https://example.com/`) are different objects with different data, and an API call naming the wrong one returns 403, not a helpful error.
+2. In the Google Cloud project, create a service account with no project roles at all. Search Console permission is not an IAM role: it is granted inside Search Console, so a service account with zero IAM roles is correct here.
+3. Create a JSON key for it and download it once. Google shows the private key only at creation.
+4. Grant the service account access to the property: Search Console, Settings, Users and permissions, add the service account's own generated email address as a user with Full permission.
+5. Enable the Search Console API on that same Cloud project. Enabling it is separate from creating the account and separate from the property grant; all three must be true.
+6. Store the whole file contents as one environment variable, for example `npx convex env set GSC_SERVICE_ACCOUNT_JSON "$(cat ~/Downloads/key.json)"`, then delete the downloaded file.
+
+Verify: Ask the integration rather than the variable. The connector's own diagnose function reports identity, API enablement and property grant as three separate results, which is the only way to tell which layer is failing. A bare 403 cannot distinguish them.
+
+Revoke or rotate: Delete the key from the service account in IAM, then remove the service account from the property's users list. Deleting the key alone leaves an account that can be given a new key by anyone with project access.
+
+Insights:
+- NEVER RUN `npx convex env list`, with or without a filter. A service-account JSON is a multi-line value, so every line-oriented filter (`sed`, `cut`, `awk`, `grep`) masks the `NAME=` line and lets the twenty lines underneath through, private key included. This has cost two key rotations on one project. The output starts with a clean list of names, which is exactly what a working redaction looks like.
+- `convex env get` EXITS 0 FOR NAMES THAT DO NOT EXIST, so `env get NAME >/dev/null 2>&1 && echo set` reports every name as set, including invented ones. Presence has to be read from stdout bytes: `[ "$(npx convex env get NAME 2>/dev/null | wc -c | tr -d ' ')" -gt 0 ]`. The obvious check produced a confident false reading that seven connector keys were provisioned when two were. Test any such check against a name you know is absent before trusting it.
+- There are THREE independent permissions wearing one Google logo: the service account can sign, the API can be enabled on the project, and the account can hold a grant on the property. A 403 means at least one is false and says nothing about which. Diagnose them separately or spend a session guessing.
+- Search Console keeps only 16 MONTHS of history and does not backfill. Every day a property waits for its connector is a day of data that will age out before anything reads it, which makes this the one credential here where delay is permanent loss rather than deferred work.
+- The key does not expire. What this needs tracking for is the opposite problem: a long-lived private key with no renewal date, sitting in an environment variable, that nothing will ever remind you about.
+
+Links:
+- Search Console settings and users: https://search.google.com/search-console/users
+- Service accounts in Google Cloud: https://console.cloud.google.com/iam-admin/serviceaccounts
+- Search Console API: https://developers.google.com/webmaster-tools/v1/api_reference_index
+
+## Obtain or rotate the Bing Webmaster Tools API key (bing-webmaster-api)
+
+Service: Bing Webmaster Tools / api-key
+
+Signals:
+- The keyword-demand connector returns unauthorized, or has never run
+- Country-level keyword volume is wanted and Google Trends has no usable API
+
+Steps:
+1. Sign in at <https://www.bing.com/webmasters> with a Microsoft account.
+2. Add the site. If the same domain is already verified in Search Console, use Import from Google Search Console: it carries the verification across and is faster than a fresh DNS record.
+3. Settings, API access, API Key, then generate.
+4. Store it as an environment variable on the deployment that calls it, for example `npx convex env set BING_WMT_API_KEY "..."`.
+
+Verify: A `GetKeyword` call for a known term returns a numeric impressions figure for the country asked about. An empty result set is a valid answer and not an auth failure; unauthorized is the auth failure.
+
+Revoke or rotate: Regenerate the key on the same API access page. Regeneration invalidates the previous value immediately, so set the new one on the deployment in the same sitting.
+
+Insights:
+- This is the free replacement for Google Trends, and for demand comparison it is better rather than merely cheaper: `GetKeyword` returns ABSOLUTE impressions with a country parameter, while Trends returns a 0 to 100 relative index that cannot be summed or divided by anything. Bing's traffic share is small, but keyword demand correlates across engines well enough to be directional.
+- Verification and the API key are separate gates. Importing the property from Search Console satisfies the first and does nothing about the second, so a successfully imported site still returns unauthorized until a key is generated.
+- The key does not expire on a schedule. It is worth an inventory row because regenerating it is the only rotation path and that breaks the connector the moment it happens.
+
+Links:
+- Bing Webmaster Tools: https://www.bing.com/webmasters
+- Bing Webmaster API reference: https://learn.microsoft.com/en-us/dotnet/api/microsoft.bing.webmaster.api.interfaces
+
+## Create or rotate a YouTube Data API key (youtube-data-api-key)
+
+Service: Google Cloud / api-key
+
+Signals:
+- A comment-mining or channel connector fails with a quota or key error
+- `quotaExceeded` appears partway through a nightly run and the rest of the pass is lost
+
+Steps:
+1. Use the Cloud project that already holds the site's other Google credentials rather than a new one, so quota and billing stay in one place.
+2. Library, enable YouTube Data API v3.
+3. Credentials, Create credentials, API key, then RESTRICT IT to the YouTube Data API v3 under API restrictions. An unrestricted key works against every enabled API on the project, so a leak is as wide as the project.
+4. Store it as an environment variable on the deployment, for example `npx convex env set YOUTUBE_API_KEY "..."`.
+
+Verify: A `channels.list` call for one known channel returns a result and costs 1 unit. Prefer that over `search.list` for the smoke test, because a failed search still spends 100 units.
+
+Revoke or rotate: Delete the key in the Cloud console credentials page. Keys have no expiry, so deletion is the only revocation.
+
+Insights:
+- THE QUOTA IS THE REAL CONSTRAINT, NOT THE KEY. 10,000 units per day, where `channels.list`, `videos.list`, `playlistItems.list` and `commentThreads.list` cost 1 unit each and `search.list` costs 100. A connector written around search burns the day's budget in 100 calls; one written around a channel's uploads playlist reads thousands of videos for the same spend.
+- A quota failure looks like a credential failure in logs and is not one. Check the Cloud console quota page before rotating anything, or you will replace a working key and still be broken tomorrow.
+- Restriction is the whole security story for an API key, because there is no scope, no expiry and no per-caller identity. A key restricted to one read-only API is a nuisance if leaked; an unrestricted one on a project with several APIs enabled is not.
+
+Links:
+- Google Cloud credentials: https://console.cloud.google.com/apis/credentials
+- YouTube Data API quota costs: https://developers.google.com/youtube/v3/determine_quota_cost
+
+## Create or replace a Google Sign-In client for a self-hosted site (google-signin-client)
+
+Service: Google Cloud / api-key
+
+Signals:
+- The Google button does not render, or renders and then fails verification server-side
+- Sign-in works locally and not in production, or the reverse: the origins list is per-URL
+- A new site in the family needs its own sign-in and there is no client for it yet
+
+Steps:
+1. Google Cloud Console, APIs and Services, Credentials, Create credentials, OAuth client ID, Web application.
+2. Add every origin that will render the button to Authorised JavaScript origins, production and the local dev port both. An origin is scheme plus host plus port, so `http://localhost:8080` and `http://localhost:8000` are different entries.
+3. Copy the Client ID. It ends `.apps.googleusercontent.com`, it is public, and it appears in plain sight in every sign-in request the browser makes.
+4. Set it in BOTH places, because they are checked against each other: the frontend module that renders the button, and the backend environment (`npx convex env set GOOGLE_CLIENT_ID "..." --prod`) so a token minted for a different app is rejected.
+5. Fill the consent screen's app name and support email. External and unpublished is fine here: unpublished only restricts sensitive scopes, and basic profile is not one.
+
+Verify: Sign in on production and confirm the account is matched rather than duplicated. Then confirm the backend rejects a token minted for another client: with the frontend and backend ids deliberately mismatched, sign-in must fail. If it succeeds, the audience check is not being enforced and that is a takeover path, not a cosmetic bug.
+
+Revoke or rotate: Delete the client in the credentials page. Every session it minted stops verifying on the next check, so this signs everyone out. Removing an origin is the narrower move when only one deployment should stop working.
+
+Insights:
+- THERE IS NO CLIENT SECRET IN THIS FLOW. This is the ID-token flow: Google Identity Services renders the button, the browser receives a signed JWT, and the backend verifies the signature against Google's published keys. Nothing secret is stored, so there is nothing to leak and nothing to rotate on a schedule. What an inventory row tracks is existence and origins, not expiry.
+- THE AUDIENCE CHECK IS THE ONE THAT MATTERS. Without verifying `aud` against your own client id, a genuine, correctly signed Google token minted for ANY other application the person has ever used would sign them in here as that email. Signature, issuer and expiry all passing is not enough on its own.
+- An unverified email must never match an existing account. If it can, claiming someone's address at an identity provider becomes account takeover here. Match on Google's permanent subject id first, then on a verified email only.
+- An empty client id should turn the feature OFF rather than half on. With it unset the button is not rendered and Google's script is never loaded, so a deployment that has not configured sign-in also runs no third-party code.
+- SIBLING SITES DO NOT NECESSARILY SHARE ONE CLIENT. Two of the three here carry distinguishable client ids, and the third reads its own from the environment with no literal in the repo, so it is either a third client or a copy of one of those two. Compare ids by fingerprint (`shasum`) rather than by eye, and never assume one row covers a whole family.
+
+Links:
+- Google Cloud credentials: https://console.cloud.google.com/apis/credentials
+- Google Identity Services for web: https://developers.google.com/identity/gsi/web/guides/overview
+
+## Rotate the Cloudinary API key and secret (cloudinary-keys)
+
+Service: Cloudinary / api-key
+
+Signals:
+- An image upload or migration script fails to authenticate against `api.cloudinary.com`
+- The key and secret were exposed and need replacing, not just hiding
+- Two sites stop uploading at once, which is the signature of a shared cloud
+
+Steps:
+1. Open Settings, API Keys at <https://console.cloudinary.com/settings/api-keys>.
+2. Prefer the single-value form the dashboard offers under API environment variable: `CLOUDINARY_URL=cloudinary://<key>:<secret>@<cloud>`. One value instead of two means one thing to set and one thing to get wrong.
+3. If the existing secret will not reveal, use Generate New Access Key rather than hunting for it. Cloudinary shows a new secret once, at creation.
+4. Write it to the gitignored `.env` of each consuming repo, then run the migration scripts with `node --env-file=.env ...` so the value never enters shell history.
+5. Disable the previous access key from the same page once both sites are confirmed working.
+
+Verify: A dry-run migration authenticates and reports the images it would upload. Note that fetching a `res.cloudinary.com` delivery URL proves nothing: that is the public address of an already-uploaded asset and authenticates nobody.
+
+Revoke or rotate: Disable or delete the access key in the API Keys page. Rotating affects every consumer of that cloud simultaneously.
+
+Insights:
+- A DELIVERY URL IS NOT A CREDENTIAL. `https://res.cloudinary.com/<cloud>/image/upload/...` contains the cloud name and is meant to be public. The credential is the part that starts `cloudinary://`. Confusing the two leads to treating a harmless public string as a leak, and sometimes to the reverse.
+- ONE CLOUD CAN SERVE SEVERAL SITES. Two of the three here deliver from the same cloud name, so one rotation breaks or fixes both, and a per-site inventory row would misrepresent the blast radius. Check the cloud name in each repo before deciding how many rows the credential needs.
+- This repo family has leaked Cloudinary keys once already. The lesson recorded at the time was about how they were stored, not about Cloudinary: a credential in a script that a static host might serve is one hosting misconfiguration away from public.
+- Nothing here expires. The reason to track it is the free tier's credit ceiling and the fact that an exposed secret has no deadline of its own to force the rotation.
+
+Links:
+- Cloudinary API keys: https://console.cloudinary.com/settings/api-keys
+
+## Obtain IGDB credentials through Twitch (igdb-twitch-client)
+
+Service: Twitch / api-key
+
+Signals:
+- A release-calendar connector is planned or failing and there are no IGDB credentials
+- IGDB's own site sends you to Twitch and it is not obvious why
+
+Steps:
+1. Enable 2FA on the Twitch account first. Application registration is refused without it, and discovering that halfway through is the usual delay.
+2. Register the application at <https://dev.twitch.tv/console/apps> with an OAuth redirect of `http://localhost:3000` and category Application Integration. The redirect is required by the form and unused by a server-to-server client.
+3. Copy the Client ID, then create a New Secret. The secret is shown once.
+4. Set both on the deployment: `npx convex env set IGDB_CLIENT_ID "..."` and `npx convex env set IGDB_CLIENT_SECRET "..."`.
+
+Verify: A client-credentials token request returns an access token, and one IGDB query with that token plus the client id returns a game record. Both headers are required; the token alone is rejected.
+
+Revoke or rotate: Delete the secret, or the whole application, in the Twitch developer console. Existing app access tokens keep working until they expire, so revocation is not instant.
+
+Insights:
+- IGDB IS OWNED BY TWITCH, so the credential is a Twitch application and the docs live in two places. There is no IGDB-side account to manage.
+- The client secret is long-lived and the access token it mints is not. A connector must exchange the secret for a token and cache that token, rather than treating the secret as the API key.
+- AniList needs no account at all for the anime side, with a public GraphQL API around 90 requests a minute. Preferred over MyAnimeList, which wants a client id for less. Reach for IGDB when the question is a game RELEASE DATE with a character list, which is the part no free alternative covers.
+
+Links:
+- Twitch developer console: https://dev.twitch.tv/console/apps
+- IGDB API docs: https://api-docs.igdb.com/
+
+## Create, find or revoke a Gemini API key (gemini-api-key)
+
+Service: Google AI Studio / api-key
+
+Signals:
+- A key sits in a `.env` and nothing in the repo reads it, so its purpose is unknown
+- A generation call returns an invalid-key or permission error
+
+Steps:
+1. List what exists before creating anything: <https://aistudio.google.com/apikey> shows every key on the account and which Cloud project each belongs to. A forgotten key is more common than a missing one.
+2. Establish whether anything still uses it: `grep -rl GEMINI_API_KEY --exclude-dir=node_modules .` in each repo that holds the value. A key with no consumer is a liability, not an asset.
+3. Create a key only for a consumer that exists, and prefer a separate key per consumer so one can be revoked without auditing the others.
+4. Store it in a gitignored `.env` or as a deployment environment variable, never in a committed script.
+
+Verify: A minimal generate call returns content. If it 403s while the key looks right, check that the key's Cloud project has the Generative Language API enabled, which is a project setting rather than a key property.
+
+Revoke or rotate: Delete the key at <https://aistudio.google.com/apikey>. Deletion takes effect immediately and there is no disable state.
+
+Insights:
+- AN ORPHANED KEY IS THE COMMON CASE HERE. Two keys were found in one site's environment file with no consumer anywhere in the repo, the only mention being a document copied in from an unrelated project. They still authenticate. Delete rather than tidy: a key nobody uses cannot be noticed when it starts being used by someone else.
+- Free-tier keys are rate limited per model and per minute, so a working key can look broken under a burst. Check the rate-limit response before concluding the credential is wrong.
+- The key is tied to a Cloud project even when created from AI Studio, which is why enablement and quota questions get answered in a console the key was never created in.
+
+Links:
+- Google AI Studio API keys: https://aistudio.google.com/apikey
+
+## Rotate or revoke a remove.bg API key (removebg-api-key)
+
+Service: remove.bg / api-key
+
+Signals:
+- An image-cutout step fails with 402 or 403
+- A key exists in an environment file and no code calls it
+
+Steps:
+1. Check the account's keys and remaining credits at <https://www.remove.bg/dashboard#api-key>. A 402 is exhausted credits, not a bad key, and rotating will not fix it.
+2. Confirm a consumer exists: `grep -rl REMOVEBG_API_KEY --exclude-dir=node_modules .`. If nothing reads it, revoke rather than rotate.
+3. Create a new key on the same page and store it in a gitignored `.env`.
+4. Delete the old key once the consumer is confirmed working.
+
+Verify: One cutout request returns an image and the dashboard's credit count decreases by one. The credit decrement is what proves the call was authenticated rather than cached.
+
+Revoke or rotate: Delete the key from the API key section of the dashboard.
+
+Insights:
+- 402 AND 403 MEAN DIFFERENT THINGS and both look like an auth failure in a log line. 402 is credits, 403 is the key. Reading the status code saves a pointless rotation.
+- Free credits are monthly and small, so a pipeline that retries on failure can spend the month's allowance on one bad batch. Cap retries around a paid, metered call.
+- Found orphaned in one site's environment file alongside a Gemini key, with no code path in the repo. Treated here as a revoke candidate rather than a renewal.
+
+Links:
+- remove.bg API dashboard: https://www.remove.bg/dashboard#api-key
+
+## Rotate the Moonshot (Kimi) API key used through an Anthropic-compatible endpoint (moonshot-api-key)
+
+Service: Moonshot AI / api-key
+
+Signals:
+- A wrapper script that points a Claude-compatible client at a third-party base URL stops authenticating
+- A live `sk-` token is found in an untracked shell script inside a repo directory
+
+Steps:
+1. Locate the consumer. The pattern is a shell script exporting `ANTHROPIC_BASE_URL` at a non-Anthropic host together with `ANTHROPIC_AUTH_TOKEN`, so the token is a Moonshot key despite every variable name saying Anthropic.
+2. Confirm the file is untracked before touching git history: `git ls-files --error-unmatch <script>`. Untracked means the exposure is local only, which is a much cheaper problem.
+3. Move the value out of the script into a gitignored `.env` or the shell environment, and have the script fail loudly when it is unset.
+4. Rotate at the Moonshot console if the file was ever tracked, ever committed, or ever synced to a cloud folder.
+
+Verify: The script still runs with the value supplied from the environment, and `grep -cE 'sk-[A-Za-z0-9_-]{10,}' <script>` returns 0.
+
+Revoke or rotate: Delete the key in the Moonshot platform console. An Anthropic-shaped variable name does not mean Anthropic can revoke it.
+
+Insights:
+- THE VARIABLE NAMES LIE ABOUT THE VENDOR. `ANTHROPIC_AUTH_TOKEN` beside an overridden `ANTHROPIC_BASE_URL` is a third-party key wearing Anthropic's variable names, because the client reads those names and the endpoint is API-compatible. A secret sweep that maps variable names to vendors will attribute it to the wrong account and send you to the wrong console to rotate it.
+- Untracked but present is still a real credential. It does not appear in `git log`, no history scrubber will find it, and no repo audit that only reads tracked files will report it. It is also exactly the file a cloud-sync daemon will happily copy.
+- Found at the top level of one site's repo directory, outside both git and the publish allowlist, so it was never served and never committed. That is the good case and it is luck rather than design.
+
+Links:
+- Moonshot platform console: https://platform.moonshot.ai/console/api-keys
