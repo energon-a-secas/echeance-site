@@ -37,7 +37,8 @@ export function renderTutorials(s, openId) {
     list.innerHTML = '<div class="card empty-note">No tutorial matches the filter.</div>';
     return;
   }
-  list.innerHTML = shown.map((t) => `
+  const missing = openId ? '<p class="empty-note" role="status">This tutorial is unavailable. Choose a guide below.</p>' : '';
+  list.innerHTML = missing + shown.map((t) => `
     <button class="card card--flat tut-card" data-open-tutorial="${escHtml(t.id)}">
       <span class="tut-card__head">${brandBadge(t.service, null, 'md')}<span
         class="tut-card__title">${escHtml(t.title)}</span></span>
@@ -52,7 +53,8 @@ function filtered(s) {
     if (s.tutService && (t.service || '') !== s.tutService) return false;
     if (!q) return true;
     const hay = [
-      t.title, t.service, t.applies_to,
+      t.title, t.service, t.applies_to, t.intent,
+      ...(t.access_methods || []), ...(t.troubleshooting || []), ...(t.environment_variables || []),
       ...(t.signals || []), ...(t.steps || []), ...(t.insights || []),
     ].join(' ').toLowerCase();
     return hay.includes(q);
@@ -79,6 +81,13 @@ function tutorialDetail(t, s) {
     <h3 class="tut-title">${brandBadge(t.service, null, 'md')}${escHtml(t.title)}</h3>
     <p class="tut-meta">${escHtml([t.service, t.applies_to].filter(Boolean).join(' · '))}</p>`];
 
+  parts.push(`<p class="tut-meta">${escHtml(t.verification_status || 'needs-review')} · ${t.last_verified ? `Documentation checked ${escHtml(t.last_verified)}` : 'Review date not recorded'}${t.verification_status === 'docs-reviewed' ? ' · Account access has not been tested.' : ''}</p>`);
+  if (t.intent) parts.push(`<p>${escHtml(t.intent)}</p>`);
+  for (const [key, label] of [['access_methods', 'Access methods'], ['environments', 'Environment'],
+    ['human_steps', 'Human setup'], ['agent_steps', 'Agent work'], ['required_permissions', 'Required permissions'],
+    ['environment_variables', 'Environment variables · names only'], ['troubleshooting', 'Troubleshooting']]) {
+    if (t[key]?.length) parts.push(section(label, `<ul class="tut-list">${t[key].map(x => `<li>${inlineCode(x)}</li>`).join('')}</ul>`));
+  }
   if (t.signals?.length) {
     parts.push(section('You are here because', `<ul class="tut-list">${
       t.signals.map((x) => `<li>${escHtml(x)}</li>`).join('')}</ul>`));

@@ -26,7 +26,8 @@ export function applyHash() {
   const tut = hash.match(/^tutorial\/(.+)$/);
   if (tut) {
     state.view = 'tutorials';
-    state.tutorialOpen = decodeURIComponent(tut[1]);
+    try { state.tutorialOpen = decodeURIComponent(tut[1]); }
+    catch { state.tutorialOpen = 'invalid-tutorial-link'; }
   } else {
     state.view = VIEWS.includes(hash) ? hash : 'board';
     state.tutorialOpen = null;

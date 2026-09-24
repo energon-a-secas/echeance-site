@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "tutorials": [
+    {
+      "id": "convex-cli",
+      "title": "Prepare Convex project access",
+      "service": "Convex",
+      "url": "https://echeance.neorgon.com/#tutorial/convex-cli",
+      "last_verified": "2026-09-20",
+      "verification_status": "docs-reviewed",
+      "access_methods": [
+        "Convex CLI device login or deployment key"
+      ]
+    },
+    {
+      "id": "wrangler-oauth",
+      "title": "Prepare Cloudflare deployment access",
+      "service": "Cloudflare",
+      "url": "https://echeance.neorgon.com/#tutorial/wrangler-oauth",
+      "last_verified": "2026-09-20",
+      "verification_status": "docs-reviewed",
+      "access_methods": [
+        "Wrangler CLI OAuth or scoped API token"
+      ]
+    },
+    {
+      "id": "r2-cdn-token",
+      "title": "Rotate the R2 API token behind the CDN publish",
+      "service": "Cloudflare R2",
+      "url": "https://echeance.neorgon.com/#tutorial/r2-cdn-token",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "gh-cli",
+      "title": "Prepare GitHub CLI access and fix account mismatches",
+      "service": "GitHub",
+      "url": "https://echeance.neorgon.com/#tutorial/gh-cli",
+      "last_verified": "2026-09-20",
+      "verification_status": "docs-reviewed",
+      "access_methods": [
+        "CLI browser login or scoped automation token"
+      ]
+    },
+    {
+      "id": "github-ssh",
+      "title": "Verify SSH push access to GitHub",
+      "service": "GitHub",
+      "url": "https://echeance.neorgon.com/#tutorial/github-ssh",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "namecheap-dns",
+      "title": "Restore Namecheap DNS API access",
+      "service": "Namecheap",
+      "url": "https://echeance.neorgon.com/#tutorial/namecheap-dns",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "steam-web-api",
+      "title": "Obtain or rotate a Steam Web API key",
+      "service": "Valve Steam",
+      "url": "https://echeance.neorgon.com/#tutorial/steam-web-api",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "github-enforcer-token",
+      "title": "Renew the github-enforcer GitHub token",
+      "service": "GitHub",
+      "url": "https://echeance.neorgon.com/#tutorial/github-enforcer-token",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "reddit-data-api-app",
+      "title": "Obtain or reuse a Reddit Data API app (Bouquin)",
+      "service": "Reddit",
+      "url": "https://echeance.neorgon.com/#tutorial/reddit-data-api-app",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "clerk-instance",
+      "title": "Recover or promote the Clerk instance",
+      "service": "Clerk",
+      "url": "https://echeance.neorgon.com/#tutorial/clerk-instance",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "google-oauth-clerk",
+      "title": "Google sign-in for a Clerk production instance",
+      "service": "Google Cloud",
+      "url": "https://echeance.neorgon.com/#tutorial/google-oauth-clerk",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "vitrina-clerk-webhook",
+      "title": "Connect or rotate the Vitrina Clerk webhook secret",
+      "service": "Clerk",
+      "url": "https://echeance.neorgon.com/#tutorial/vitrina-clerk-webhook",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "vitrina-admin-subjects",
+      "title": "Set the Vitrina admin ids (ADMIN_SUBJECTS)",
+      "service": "Convex",
+      "url": "https://echeance.neorgon.com/#tutorial/vitrina-admin-subjects",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "airtable-pat",
+      "title": "Rotate the shared Airtable personal access token",
+      "service": "Airtable",
+      "url": "https://echeance.neorgon.com/#tutorial/airtable-pat",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "gsc-service-account",
+      "title": "Provision or rotate a Search Console service account key",
+      "service": "Google Search Console",
+      "url": "https://echeance.neorgon.com/#tutorial/gsc-service-account",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "bing-webmaster-api",
+      "title": "Obtain or rotate the Bing Webmaster Tools API key",
+      "service": "Bing Webmaster Tools",
+      "url": "https://echeance.neorgon.com/#tutorial/bing-webmaster-api",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "youtube-data-api-key",
+      "title": "Create or rotate a YouTube Data API key",
+      "service": "Google Cloud",
+      "url": "https://echeance.neorgon.com/#tutorial/youtube-data-api-key",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "google-signin-client",
+      "title": "Create or replace a Google Sign-In client for a self-hosted site",
+      "service": "Google Cloud",
+      "url": "https://echeance.neorgon.com/#tutorial/google-signin-client",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "cloudinary-keys",
+      "title": "Rotate the Cloudinary API key and secret",
+      "service": "Cloudinary",
+      "url": "https://echeance.neorgon.com/#tutorial/cloudinary-keys",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "igdb-twitch-client",
+      "title": "Obtain IGDB credentials through Twitch",
+      "service": "Twitch",
+      "url": "https://echeance.neorgon.com/#tutorial/igdb-twitch-client",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "gemini-api-key",
+      "title": "Create, find or revoke a Gemini API key",
+      "service": "Google AI Studio",
+      "url": "https://echeance.neorgon.com/#tutorial/gemini-api-key",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "removebg-api-key",
+      "title": "Rotate or revoke a remove.bg API key",
+      "service": "remove.bg",
+      "url": "https://echeance.neorgon.com/#tutorial/removebg-api-key",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "moonshot-api-key",
+      "title": "Rotate the Moonshot (Kimi) API key used through an Anthropic-compatible endpoint",
+      "service": "Moonshot AI",
+      "url": "https://echeance.neorgon.com/#tutorial/moonshot-api-key",
+      "last_verified": null,
+      "verification_status": "needs-review",
+      "access_methods": []
+    },
+    {
+      "id": "supabase-access",
+      "title": "Prepare Supabase management and application access",
+      "service": "Supabase",
+      "url": "https://echeance.neorgon.com/#tutorial/supabase-access",
+      "last_verified": "2026-09-20",
+      "verification_status": "docs-reviewed",
+      "access_methods": [
+        "Supabase CLI login plus application API keys"
+      ]
+    },
+    {
+      "id": "stripe-sandbox",
+      "title": "Prepare Stripe sandbox access",
+      "service": "Stripe",
+      "url": "https://echeance.neorgon.com/#tutorial/stripe-sandbox",
+      "last_verified": "2026-09-20",
+      "verification_status": "docs-reviewed",
+      "access_methods": [
+        "Dashboard setup and restricted API key"
+      ]
+    },
+    {
+      "id": "resend-sending",
+      "title": "Prepare Resend sending access",
+      "service": "Resend",
+      "url": "https://echeance.neorgon.com/#tutorial/resend-sending",
+      "last_verified": "2026-09-20",
+      "verification_status": "docs-reviewed",
+      "access_methods": [
+        "Dashboard API key and DNS verification"
+      ]
+    },
+    {
+      "id": "vercel-cli",
+      "title": "Prepare Vercel project and environment access",
+      "service": "Vercel",
+      "url": "https://echeance.neorgon.com/#tutorial/vercel-cli",
+      "last_verified": "2026-09-20",
+      "verification_status": "docs-reviewed",
+      "access_methods": [
+        "Vercel CLI login or automation token"
+      ]
+    },
+    {
+      "id": "netlify-cli",
+      "title": "Prepare Netlify site access",
+      "service": "Netlify",
+      "url": "https://echeance.neorgon.com/#tutorial/netlify-cli",
+      "last_verified": "2026-09-20",
+      "verification_status": "docs-reviewed",
+      "access_methods": [
+        "Netlify CLI browser login or automation token"
+      ]
+    }
+  ]
+}

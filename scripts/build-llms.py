@@ -7,6 +7,7 @@ whole renewal playbook from one URL. Run via `make llms` after editing
 data/tutorials.yaml, and commit both files together.
 """
 
+import json
 from pathlib import Path
 
 import yaml
@@ -47,6 +48,17 @@ def main() -> None:
         meta = " / ".join(x for x in [t.get("service"), t.get("applies_to")] if x)
         if meta:
             parts.append(f"Service: {meta}\n\n")
+        if t.get("intent"):
+            parts.append(f"Purpose: {t['intent']}\n\n")
+        parts.append(f"Verification: {t.get('verification_status', 'needs-review')}; "
+                     f"checked {t.get('last_verified', 'not recorded')}.\n\n")
+        for key, label in [("access_methods", "Access methods"), ("environments", "Environments"),
+                           ("human_steps", "Human setup"), ("agent_steps", "Agent work"),
+                           ("required_permissions", "Required permissions"),
+                           ("environment_variables", "Environment variables (names only)"),
+                           ("troubleshooting", "Troubleshooting")]:
+            if t.get(key):
+                parts.append(block(label, [f"- {x}" for x in t[key]]))
         if t.get("signals"):
             parts.append(block("Signals", [f"- {s}" for s in t["signals"]]))
         if t.get("steps"):
@@ -62,7 +74,14 @@ def main() -> None:
 
     out = ROOT / "llms.txt"
     out.write_text("".join(parts).rstrip() + "\n")
-    print(f"wrote {out.relative_to(ROOT)}: {len(tutorials)} tutorials")
+    index = {"schemaVersion": 1, "tutorials": [
+        {"id": t["id"], "title": t["title"], "service": t["service"],
+         "url": f"https://echeance.neorgon.com/#tutorial/{t['id']}",
+         "last_verified": t.get("last_verified"),
+         "verification_status": t.get("verification_status", "needs-review"),
+         "access_methods": t.get("access_methods", [])} for t in tutorials]}
+    (ROOT / "data" / "tutorial-index.json").write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n")
+    print(f"wrote llms.txt and data/tutorial-index.json: {len(tutorials)} tutorials")
 
 
 if __name__ == "__main__":

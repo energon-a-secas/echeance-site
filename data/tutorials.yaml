@@ -11,46 +11,89 @@
 
 tutorials:
   - id: convex-cli
-    title: Renew Convex CLI auth
+    title: Prepare Convex project access
     service: Convex
     applies_to: oauth-session
+    intent: Prepare the intended development project for an AI coding agent.
+    access_methods:
+    - Convex CLI device login or deployment key
+    environments:
+    - Development first; production access is a separate decision.
     signals:
-      - "`npx convex deploy` or `npx convex dev` fails with an authentication error"
-      - "Convex deploys have been blocked since the last login went stale"
+    - Initial setup, expired access, or a command targeting the wrong account or project.
+    human_steps:
+    - For initial setup, run `npx convex dev` interactively only when ready to configure and sync the development
+      project. It can deploy code.
+    agent_steps:
+    - Inspect the project selection without printing secrets. Use `npx convex data` without a table argument to check
+      deployment access and list table names.
+    required_permissions:
+    - Membership in the intended team/project; deployment keys must match the intended deployment.
+    environment_variables:
+    - 'CONVEX_DEPLOYMENT: project/deployment selection; CONVEX_DEPLOY_KEY: secret deployment access.'
     steps:
-      - "Diagnose first, and do not assume expiry: `npx convex login status` prints the account's reachable teams. If the team listed is not the one that owns the project, the token is fine and belongs to the WRONG ACCOUNT, which is a different fix."
-      - "Open a real interactive terminal. The login is a browser OAuth flow; it cannot run from a non-interactive session, so an agent must hand this step to a person."
-      - "From the Convex project directory (for the fleet: `projects/memes-site`), run `npx convex login --force`."
-      - "Complete the browser prompt with the account that owns the project's team, not merely any Convex account."
-    verify: "`npx convex dev --once` from the project directory completes without an auth error."
-    revoke: "Log out with `npx convex logout`, or revoke the session from the Convex dashboard settings."
+    - Confirm the intended account, project and environment with the person who owns them.
+    - Complete the human setup below, then run the verification before making changes.
+    verify: '`npx convex data` without a table argument reaches the intended deployment. Avoid data rows and `env
+      list`/`env get` in routine verification.'
+    revoke: Revoke the relevant session or token in the provider account. Replace affected local and deployment secrets;
+      repeat verification.
+    troubleshooting:
+    - Check project/team membership and deployment selection before assuming expiry.
+    - The current CLI reference does not document `convex login status`; check the installed CLI help before following
+      older login recipes.
+    - 'Do not use `dev --once` as a read-only authentication probe: it syncs functions.'
     insights:
-      - "`npx convex login` SHORT-CIRCUITS. With any token already in ~/.convex/config.json it answers 'this device has previously been authorized and is ready for use' and changes nothing, without checking which account that token belongs to. Only `--force` re-authorizes. This cost two sessions in 2026-09."
-      - "'You don't have access to the selected project' is an ACCOUNT mismatch, not an expiry. Convex says the same thing whether the project moved, was deleted, or your token is for another account; `login status` is what tells them apart."
-      - "The fleet's own entry claimed a ~90 day token lifetime, inferred from the config file's date. It was wrong: the token had not expired at all. Do not infer a lifetime from a file mtime."
-      - "Renewal is the one step in the fleet's deploy chain that cannot be automated; schedule it, do not discover it."
+    - Login proves identity, not permission to deploy or access application data. Check each required capability separately.
+    - Keep secret values in the local credential store or secret manager. Share variable names and redacted results
+      only.
+    last_verified: '2026-09-20'
+    verification_status: docs-reviewed
     links:
-      - label: Convex dashboard
-        url: https://dashboard.convex.dev/
+    - label: CLI commands and deployment selection
+      url: https://docs.convex.dev/cli/overview
 
   - id: wrangler-oauth
-    title: Renew the Cloudflare wrangler session
+    title: Prepare Cloudflare deployment access
     service: Cloudflare
     applies_to: oauth-session
+    intent: Prepare the intended development project for an AI coding agent.
+    access_methods:
+    - Wrangler CLI OAuth or scoped API token
+    environments:
+    - Development first; production access is a separate decision.
     signals:
-      - "`wrangler deploy` or `wrangler secret put` fails with an auth error"
+    - Initial setup, expired access, or a command targeting the wrong account or project.
+    human_steps:
+    - Run `npx wrangler login` interactively, or create a scoped automation token. Select the account that owns the
+      project.
+    agent_steps:
+    - Run `npx wrangler whoami`. Match the account to the project configuration before preparing deployment.
+    required_permissions:
+    - Scope tokens to the intended account and resource; use Pages permissions for Pages deployment.
+    environment_variables:
+    - 'CLOUDFLARE_API_TOKEN: secret for automation; CLOUDFLARE_ACCOUNT_ID: account identifier.'
     steps:
-      - "Check who the CLI thinks you are: `wrangler whoami`."
-      - "If the session is stale, run `wrangler login` (browser OAuth; needs an interactive terminal)."
-      - "Worker secrets are written from the worker's own directory with `wrangler secret put NAME`; `worker/wrangler.toml` names the worker."
-    verify: "`wrangler whoami` reports the expected account."
-    revoke: "`wrangler logout`, or revoke the authorization under the Cloudflare dashboard's API tokens page."
+    - Confirm the intended account, project and environment with the person who owns them.
+    - Complete the human setup below, then run the verification before making changes.
+    verify: '`npx wrangler whoami` reports the expected account. This check does not publish anything.'
+    revoke: Revoke the relevant session or token in the provider account. Replace affected local and deployment secrets;
+      repeat verification.
+    troubleshooting:
+    - A wrong account, missing permission or incorrect resource scope can look like expired access.
+    - Check whether an automation token is present without revealing it. Do not rotate application secrets just to
+      fix CLI login.
     insights:
-      - "No long-lived token is stored anywhere in the repo; the OAuth session is cached locally. When a deploy fails, check `wrangler whoami` before touching any secret."
-      - "Deploys and secret writes are per-account, so a whoami mismatch explains most sudden 403s."
+    - Login proves identity, not permission to deploy or access application data. Check each required capability separately.
+    - Keep secret values in the local credential store or secret manager. Share variable names and redacted results
+      only.
+    last_verified: '2026-09-20'
+    verification_status: docs-reviewed
     links:
-      - label: Cloudflare dashboard
-        url: https://dash.cloudflare.com/
+    - label: Wrangler login and identity
+      url: https://developers.cloudflare.com/workers/wrangler/commands/general/
+    - label: API token scope
+      url: https://developers.cloudflare.com/fundamentals/api/get-started/create-token/
 
   - id: r2-cdn-token
     title: Rotate the R2 API token behind the CDN publish
@@ -70,21 +113,47 @@ tutorials:
       - "The CI token must have no client IP allowlist at all: GitHub runners rotate IPs, so an allowlisted token fails every run with code 9109. Mint a separate unfiltered token for CI if the interactive one is filtered."
 
   - id: gh-cli
-    title: Fix GitHub CLI auth and account switching
+    title: Prepare GitHub CLI access and fix account mismatches
     service: GitHub
     applies_to: oauth-session
+    intent: Prepare the intended development project for an AI coding agent.
+    access_methods:
+    - CLI browser login or scoped automation token
+    environments:
+    - Development first; production access is a separate decision.
     signals:
-      - "`gh repo create` fails with a permissions error"
-      - "`gh` commands act as the wrong account"
+    - Initial setup, expired access, or a command targeting the wrong account or project.
+    human_steps:
+    - Run `gh auth login` if no suitable session exists. Confirm organization membership and any SSO authorization.
+    agent_steps:
+    - Run `gh auth status --active --hostname github.com`. Confirm the target repository separately before writes.
+    required_permissions:
+    - Repository read for inspection; add content write or pull-request permissions only for the agreed task.
+    environment_variables:
+    - 'GH_TOKEN / GITHUB_TOKEN: secret automation tokens; can override stored CLI login.'
     steps:
-      - "See every logged-in account and which is active: `gh auth status`."
-      - "Switch with `gh auth switch --user <name>`; log a missing account in with `gh auth login` (browser flow)."
-      - "Repo creation in the fleet's org must run as the account that owns it; switch before `gh repo create`, not after it fails."
-    verify: "`gh auth status` shows the intended account as active."
-    revoke: "`gh auth logout --user <name>`, or revoke the device under GitHub Settings, Applications."
+    - Confirm the intended account, project and environment with the person who owns them.
+    - Complete the human setup below, then run the verification before making changes.
+    verify: '`gh auth status --active --hostname github.com` reports a valid intended identity. Never add `--show-token`.'
+    revoke: Revoke the relevant session or token in the provider account. Replace affected local and deployment secrets;
+      repeat verification.
+    troubleshooting:
+    - Check whether GH_TOKEN or GITHUB_TOKEN is set without printing its value; environment tokens take precedence.
+    - A valid login with a repository 404 can mean missing repository access. Switching stored accounts does not override
+      an environment token.
     insights:
-      - "Two personas are logged in on this machine and only one has repo-create rights in the org; `gh auth status` first is cheaper than a failed create."
-      - "git identity is separate from gh identity: commits need the right `user.name`/`user.email` per repo even when gh is on the right account."
+    - Login proves identity, not permission to deploy or access application data. Check each required capability separately.
+    - Keep secret values in the local credential store or secret manager. Share variable names and redacted results
+      only.
+    last_verified: '2026-09-20'
+    verification_status: docs-reviewed
+    links:
+    - label: Authentication
+      url: https://cli.github.com/manual/gh_auth_login
+    - label: Verify login
+      url: https://cli.github.com/manual/gh_auth_status
+    - label: Environment precedence
+      url: https://cli.github.com/manual/gh_help_environment
 
   - id: github-ssh
     title: Verify SSH push access to GitHub
@@ -587,3 +656,225 @@ tutorials:
     links:
       - label: Moonshot platform console
         url: https://platform.moonshot.ai/console/api-keys
+
+  - id: supabase-access
+    title: Prepare Supabase management and application access
+    service: Supabase
+    applies_to: oauth-session
+    intent: Prepare the intended development project for an AI coding agent.
+    access_methods:
+    - Supabase CLI login plus application API keys
+    environments:
+    - Development first; production access is a separate decision.
+    signals:
+    - Initial setup, expired access, or a command targeting the wrong account or project.
+    human_steps:
+    - Select or create the development project. Complete `supabase login` and configure the appropriate keys in local
+      or hosted environment settings.
+    agent_steps:
+    - Run `supabase projects list` and confirm the project identifier. Test application access with a non-sensitive
+      fixture and an unauthorized user.
+    required_permissions:
+    - Management access to the intended project; application access controlled independently by database policies.
+    environment_variables:
+    - 'SUPABASE_ACCESS_TOKEN: secret management token.'
+    - 'SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY: client configuration; names depend on the app.'
+    - 'SUPABASE_SECRET_KEY: elevated server-only key, only if the server requires it.'
+    steps:
+    - Confirm the intended account, project and environment with the person who owns them.
+    - Complete the human setup below, then run the verification before making changes.
+    verify: '`supabase projects list` verifies management visibility. A separate fixture test must prove allowed and
+      denied application access without logging record contents.'
+    revoke: Revoke the relevant session or token in the provider account. Replace affected local and deployment secrets;
+      repeat verification.
+    troubleshooting:
+    - A management token is not an application API key.
+    - A publishable key belongs in the client only with appropriate authorization policies. Secret/server keys bypass
+      those policies and must remain on the server.
+    - Check project URL and environment before replacing keys.
+    insights:
+    - Login proves identity, not permission to deploy or access application data. Check each required capability separately.
+    - Keep secret values in the local credential store or secret manager. Share variable names and redacted results
+      only.
+    last_verified: '2026-09-20'
+    verification_status: docs-reviewed
+    links:
+    - label: API key types
+      url: https://supabase.com/docs/guides/getting-started/api-keys
+    - label: CLI reference
+      url: https://supabase.com/docs/reference/cli/supabase-projects-list
+
+  - id: stripe-sandbox
+    title: Prepare Stripe sandbox access
+    service: Stripe
+    applies_to: api-key
+    intent: Prepare the intended development project for an AI coding agent.
+    access_methods:
+    - Dashboard setup and restricted API key
+    environments:
+    - Development first; production access is a separate decision.
+    signals:
+    - Initial setup, expired access, or a command targeting the wrong account or project.
+    human_steps:
+    - Choose the intended sandbox and create the restricted key. Configure the development webhook separately.
+    agent_steps:
+    - Check sandbox configuration and key presence without printing values. Test signature rejection locally; keep
+      real charges out of development verification.
+    required_permissions:
+    - Use a restricted key with only the resources and operations the integration needs.
+    environment_variables:
+    - 'STRIPE_SECRET_KEY: server-only sandbox key.'
+    - 'STRIPE_PUBLISHABLE_KEY: client sandbox identifier.'
+    - 'STRIPE_WEBHOOK_SECRET: server-only signature verification; separate from the API key.'
+    steps:
+    - Confirm the intended account, project and environment with the person who owns them.
+    - Complete the human setup below, then run the verification before making changes.
+    verify: Confirm the sandbox in the dashboard, then run the agreed sandbox integration tests. Verify that unsigned
+      webhook requests are rejected.
+    revoke: Revoke the relevant session or token in the provider account. Replace affected local and deployment secrets;
+      repeat verification.
+    troubleshooting:
+    - Sandbox and live keys access different environments.
+    - API authentication and webhook signature verification use different secrets.
+    - Permission errors can mean a missing resource permission rather than an invalid key.
+    insights:
+    - Login proves identity, not permission to deploy or access application data. Check each required capability separately.
+    - Keep secret values in the local credential store or secret manager. Share variable names and redacted results
+      only.
+    last_verified: '2026-09-20'
+    verification_status: docs-reviewed
+    links:
+    - label: Key types and restriction
+      url: https://docs.stripe.com/keys
+    - label: Webhook verification
+      url: https://docs.stripe.com/webhooks
+
+  - id: resend-sending
+    title: Prepare Resend sending access
+    service: Resend
+    applies_to: api-key
+    intent: Prepare the intended development project for an AI coding agent.
+    access_methods:
+    - Dashboard API key and DNS verification
+    environments:
+    - Development first; production access is a separate decision.
+    signals:
+    - Initial setup, expired access, or a command targeting the wrong account or project.
+    human_steps:
+    - Verify the sending domain and create a sending key. Configure it in the server environment, not browser JavaScript.
+    agent_steps:
+    - Check key presence and sender configuration without logging the key. Prepare a test using a designated test
+      recipient.
+    required_permissions:
+    - Sending-only access, restricted to the intended domain where supported. Domain administration needs separate
+      permission.
+    environment_variables:
+    - 'RESEND_API_KEY: server-only sending key.'
+    steps:
+    - Confirm the intended account, project and environment with the person who owns them.
+    - Complete the human setup below, then run the verification before making changes.
+    verify: Confirm domain verification in the dashboard. When a test send is explicitly part of the task, send to
+      the agreed recipient and record only status and message ID.
+    revoke: Revoke the relevant session or token in the provider account. Replace affected local and deployment secrets;
+      repeat verification.
+    troubleshooting:
+    - A valid API key does not make an unverified sender domain usable.
+    - A sending-only key may not list domains; that failure alone does not prove the key is invalid.
+    - Check sender domain, recipient restrictions and quota before rotating a key.
+    insights:
+    - Login proves identity, not permission to deploy or access application data. Check each required capability separately.
+    - Keep secret values in the local credential store or secret manager. Share variable names and redacted results
+      only.
+    last_verified: '2026-09-20'
+    verification_status: docs-reviewed
+    links:
+    - label: API keys
+      url: https://resend.com/docs/dashboard/api-keys/introduction
+    - label: Domain verification
+      url: https://resend.com/docs/dashboard/domains/introduction
+
+  - id: vercel-cli
+    title: Prepare Vercel project and environment access
+    service: Vercel
+    applies_to: oauth-session
+    intent: Prepare the intended development project for an AI coding agent.
+    access_methods:
+    - Vercel CLI login or automation token
+    environments:
+    - Development first; production access is a separate decision.
+    signals:
+    - Initial setup, expired access, or a command targeting the wrong account or project.
+    human_steps:
+    - Complete `vercel login` and confirm the team/project. Configure development, preview and production variables
+      separately.
+    agent_steps:
+    - Run `vercel whoami`; inspect the linked project. Use `vercel env ls preview` to inspect preview variable metadata.
+    required_permissions:
+    - Membership and deployment permission for the intended team/project.
+    environment_variables:
+    - 'VERCEL_TOKEN: secret for automation; VERCEL_ORG_ID / VERCEL_PROJECT_ID: target identifiers.'
+    steps:
+    - Confirm the intended account, project and environment with the person who owns them.
+    - Complete the human setup below, then run the verification before making changes.
+    verify: '`vercel whoami` identifies the expected user; confirm the linked project and preview environment before
+      deploying.'
+    revoke: Revoke the relevant session or token in the provider account. Replace affected local and deployment secrets;
+      repeat verification.
+    troubleshooting:
+    - A correct user may be in the wrong team or linked to the wrong project.
+    - Environment variables are environment-specific. Do not print downloaded secret files during debugging.
+    insights:
+    - Login proves identity, not permission to deploy or access application data. Check each required capability separately.
+    - Keep secret values in the local credential store or secret manager. Share variable names and redacted results
+      only.
+    last_verified: '2026-09-20'
+    verification_status: docs-reviewed
+    links:
+    - label: Verify identity
+      url: https://vercel.com/docs/cli/whoami
+    - label: Environment management
+      url: https://vercel.com/docs/cli/env
+    - label: Deploy from CLI
+      url: https://vercel.com/docs/projects/deploy-from-cli
+
+  - id: netlify-cli
+    title: Prepare Netlify site access
+    service: Netlify
+    applies_to: oauth-session
+    intent: Prepare the intended development project for an AI coding agent.
+    access_methods:
+    - Netlify CLI browser login or automation token
+    environments:
+    - Development first; production access is a separate decision.
+    signals:
+    - Initial setup, expired access, or a command targeting the wrong account or project.
+    human_steps:
+    - Complete `netlify login` interactively. Link the repository to the intended existing site rather than creating
+      an accidental duplicate.
+    agent_steps:
+    - Run `netlify status` and check the account and linked site. Inspect the intended deployment context before preparing
+      changes.
+    required_permissions:
+    - Access to the intended team/site and the agreed deployment operations.
+    environment_variables:
+    - 'NETLIFY_AUTH_TOKEN: secret for automation; NETLIFY_SITE_ID: site identifier.'
+    steps:
+    - Confirm the intended account, project and environment with the person who owns them.
+    - Complete the human setup below, then run the verification before making changes.
+    verify: '`netlify status` reports the intended account/site without deploying.'
+    revoke: Revoke the relevant session or token in the provider account. Replace affected local and deployment secrets;
+      repeat verification.
+    troubleshooting:
+    - Wrong linked site and missing team access are different from expired login.
+    - Check the deployment context and environment configuration when local and hosted behavior differ.
+    insights:
+    - Login proves identity, not permission to deploy or access application data. Check each required capability separately.
+    - Keep secret values in the local credential store or secret manager. Share variable names and redacted results
+      only.
+    last_verified: '2026-09-20'
+    verification_status: docs-reviewed
+    links:
+    - label: CLI setup
+      url: https://docs.netlify.com/api-and-cli-guides/cli-guides/get-started-with-cli/
+    - label: Status command
+      url: https://cli.netlify.com/commands/status/

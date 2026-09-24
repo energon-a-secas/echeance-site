@@ -8,7 +8,7 @@ help:
 	@echo ""
 	@echo "  make serve    Start dev server → http://localhost:$(PORT)"
 	@echo "  make kill     Kill this project's HTTP server"
-	@echo "  make llms     Regenerate llms.txt from data/tutorials.yaml"
+	@echo "  make llms     Regenerate llms.txt + public tutorial index"
 	@echo ""
 
 # ── llms.txt ──────────────────────────────────────────────────────────────────
@@ -30,3 +30,7 @@ serve:
 .PHONY: kill
 kill:
 	@lsof -ti :$(PORT) | xargs kill 2>/dev/null && echo "Stopped server on port $(PORT)" || echo "No server running on port $(PORT)"
+
+.PHONY: test
+test:
+	@python3 -m unittest discover -s tests -v

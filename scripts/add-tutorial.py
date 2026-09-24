@@ -18,6 +18,7 @@ Usage:
 
 Exit: 0 written or clean, 1 validation findings, 2 usage or environment error.
 """
+from datetime import date
 import json
 import pathlib
 import re
@@ -34,11 +35,17 @@ TUTORIALS = ROOT / "data" / "tutorials.yaml"
 
 REQUIRED_STR = ["id", "title", "service", "applies_to", "verify", "revoke"]
 REQUIRED_LIST = ["signals", "steps", "insights"]
+OPTIONAL_STR = ["intent", "last_verified", "verification_status"]
+OPTIONAL_LIST = ["access_methods", "environments", "human_steps", "agent_steps",
+                 "required_permissions", "environment_variables", "troubleshooting"]
 KNOWN_KINDS = {"api-key", "oauth-session", "ssh-key", "ip-whitelist"}
 
 # Shapes that must never reach a public site. Deliberately narrow: a validator
 # that cries wolf on every hex string is one an author turns off.
 SECRETS = [
+    (r"\b[rsp]k_(?:test|live)_[A-Za-z0-9]{16,}", "a Stripe or Clerk key"),
+    (r"\b(?:sbp_|sb_secret_|re_)[A-Za-z0-9_-]{20,}", "a provider secret key"),
+    (r"\bwhsec_[A-Za-z0-9]{16,}", "a webhook signing secret"),
     (r"\bgh[pousr]_[A-Za-z0-9]{16,}", "a GitHub token"),
     (r"\bsk-[A-Za-z0-9]{20,}", "an OpenAI-style key"),
     (r"\bAKIA[0-9A-Z]{16}\b", "an AWS access key id"),
@@ -95,7 +102,7 @@ def main():
     tid = entry.get("id", "")
     if isinstance(tid, str) and tid:
         if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", tid):
-            fail(f"id must be kebab-case: {tid!r}")
+            fail("id must be kebab-case")
             bad = True
         if tid in existing:
             fail(f"id already exists: {tid}. Edit that entry instead of adding a second.")
@@ -108,25 +115,56 @@ def main():
               f"{', '.join(sorted(KNOWN_KINDS))}\033[0m")
 
     links = entry.get("links", [])
-    if links and not (isinstance(links, list) and all(
-            isinstance(l, dict) and {"label", "url"} <= set(l) for l in links)):
-        fail("links must be a list of {label, url} objects")
+    if not isinstance(links, list) or not all(
+            isinstance(l, dict) and isinstance(l.get("label"), str) and l["label"].strip()
+            and isinstance(l.get("url"), str) and re.match(r"^https?://[^\s]+$", l["url"])
+            for l in links):
+        fail("links must contain non-empty labels and HTTP(S) URLs")
         bad = True
 
-    for k in REQUIRED_STR + REQUIRED_LIST:
-        vals = entry.get(k) if isinstance(entry.get(k), list) else [entry.get(k)]
-        for v in vals:
+    for k in OPTIONAL_STR:
+        if k in entry and (not isinstance(entry[k], str) or not entry[k].strip()):
+            fail(f"{k} must be non-empty text")
+            bad = True
+    for k in OPTIONAL_LIST:
+        if k in entry and (not isinstance(entry[k], list) or not entry[k]
+                           or not all(isinstance(x, str) and x.strip() for x in entry[k])):
+            fail(f"{k} must be a non-empty list of text")
+            bad = True
+    if "last_verified" in entry:
+        try:
+            if date.fromisoformat(entry["last_verified"]).isoformat() != entry["last_verified"]:
+                raise ValueError()
+        except (ValueError, TypeError):
+            fail("last_verified must be an ISO date: YYYY-MM-DD")
+            bad = True
+    if entry.get("verification_status") not in (None, "docs-reviewed", "tested", "needs-review"):
+        fail("verification_status must be docs-reviewed, tested or needs-review")
+        bad = True
+
+    def texts(value):
+        if isinstance(value, str):
+            yield value
+        elif isinstance(value, list):
+            for item in value:
+                yield from texts(item)
+        elif isinstance(value, dict):
+            for item in value.values():
+                yield from texts(item)
+
+    for k, value in entry.items():
+        for v in texts(value):
             if not isinstance(v, str):
                 continue
             for pat, what in SECRETS:
                 for m in re.finditer(pat, v):
                     if ALLOW.search(m.group(0)):
                         continue
-                    fail(f"{k} looks like it contains {what}: {m.group(0)[:24]}...")
+                    fail(f"{k} looks like it contains {what} (value redacted)")
                     fail("  tutorials.yaml is published. Use a placeholder shape instead.")
                     bad = True
 
-    unknown = set(entry) - set(REQUIRED_STR) - set(REQUIRED_LIST) - {"links"}
+    unknown = set(entry) - set(REQUIRED_STR) - set(REQUIRED_LIST) - set(OPTIONAL_STR) - set(OPTIONAL_LIST) - {"links"}
     if unknown:
         fail(f"unknown field(s), the site will ignore them: {', '.join(sorted(unknown))}")
         bad = True
@@ -142,7 +180,7 @@ def main():
 
     out = [f"  - id: {tid}"]
     for k in ["title", "service", "applies_to"]:
-        out.append(f"    {k}: {entry[k]}")
+        out.append(f"    {k}: {scalar(entry[k])}")
     for k in ["signals", "steps"]:
         out.append(f"    {k}:")
         out += [f"      - {scalar(x)}" for x in entry[k]]
@@ -153,11 +191,20 @@ def main():
     if links:
         out.append("    links:")
         for l in links:
-            out.append(f"      - label: {l['label']}")
-            out.append(f"        url: {l['url']}")
+            out.append(f"      - label: {scalar(l['label'])}")
+            out.append(f"        url: {scalar(l['url'])}")
+
+    for k in OPTIONAL_STR:
+        if k in entry:
+            out.append(f"    {k}: {scalar(entry[k])}")
+    for k in OPTIONAL_LIST:
+        if k in entry:
+            out.append(f"    {k}:")
+            out += [f"      - {scalar(x)}" for x in entry[k]]
 
     text = TUTORIALS.read_text().rstrip("\n")
-    TUTORIALS.write_text(text + "\n\n" + "\n".join(out) + "\n")
+    base = re.sub(r"(?m)^tutorials:\s*\[\]\s*$", "tutorials:", text) if not doc.get("tutorials") else text
+    TUTORIALS.write_text(base + "\n\n" + "\n".join(out) + "\n")
 
     # Prove the file still parses and grew by exactly one, or put it back.
     try:
