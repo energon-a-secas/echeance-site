@@ -1,6 +1,6 @@
 // ── YAML in, YAML out ────────────────────────────────────────
 // Parse, validate and serialize the inventory document.
-// Uses js-yaml (window.jsyaml, loaded from cdnjs in index.html).
+// Uses js-yaml (window.jsyaml, 4.3.2 from jsDelivr, loaded in index.html).
 //
 // CORE_SCHEMA keeps unquoted dates as plain strings; the default
 // schema would turn `2026-05-28` into a JS Date and break round-trips.
