@@ -5,7 +5,7 @@
 
 import {
   state, applyYaml, save, clearSaved, fetchBundled,
-  loadInventory, syncYamlFromCredentials, savePrefs,
+  loadInventory, syncYamlFromCredentials, savePrefs, localInventory,
 } from './state.js';
 import { remoteIconsEnabled, setRemoteIcons } from './brand.js';
 import { render, renderCredModal, renderYamlError } from './render.js';
@@ -288,6 +288,8 @@ export function bindEvents(s) {
     try { await navigator.clipboard.writeText(s.yamlText); showToast('Copied'); }
     catch { showToast('Clipboard unavailable'); }
   });
+  // The owner's machine only: anywhere else the file is never served.
+  $('loadLocalBtn').hidden = !localInventory;
   $('loadLocalBtn').addEventListener('click', () => {
     loadDocument('inventory.local.yaml', 'local file', { forgetSaved: true });
   });

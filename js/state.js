@@ -65,9 +65,18 @@ async function fetchText(url) {
 }
 
 /**
+ * inventory.local.yaml is the owner's real inventory. It is gitignored, so it
+ * only exists where the owner serves the repo; asking for it anywhere else
+ * logged a 404 on every fresh visit to the public site.
+ */
+const host = location.hostname;
+export const localInventory = ['localhost', '127.0.0.1', '[::1]'].includes(host)
+  || host.endsWith('.localhost');
+
+/**
  * Load the inventory, first hit wins:
  * 1. localStorage (the user applied or imported something here before)
- * 2. inventory.local.yaml (gitignored; present on the owner's machine only)
+ * 2. inventory.local.yaml (gitignored; asked for on a local host only)
  * 3. data/sample.yaml (dummy entries so the public site demonstrates itself)
  */
 export async function loadInventory(s) {
@@ -75,10 +84,12 @@ export async function loadInventory(s) {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) { applyYaml(s, saved, 'browser'); return; }
   } catch { /* unavailable */ }
-  try {
-    applyYaml(s, await fetchText('inventory.local.yaml'), 'local file');
-    return;
-  } catch { /* not present: the normal case in production */ }
+  if (localInventory) {
+    try {
+      applyYaml(s, await fetchText('inventory.local.yaml'), 'local file');
+      return;
+    } catch { /* not on this machine */ }
+  }
   try {
     applyYaml(s, await fetchText('data/sample.yaml'), 'sample');
   } catch {

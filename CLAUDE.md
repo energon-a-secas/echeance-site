@@ -49,9 +49,11 @@ Vendored from `packages/neorgon-ui/`: never edit in place, run the sync script i
 ## Gotchas
 
 - **`inventory.local.yaml` is the owner's real inventory and is gitignored.** The repo
-  is public; that file must never be committed. The app probes it with fetch on load
-  (localStorage first, then the local file, then `data/sample.yaml`), so production
-  logs one expected 404 for it on every fresh visit.
+  is public; that file must never be committed. On a local host only (`localInventory`
+  in `js/state.js`: localhost, 127.0.0.1, [::1], `*.localhost`) the app asks for it on
+  load (localStorage first, then the local file, then `data/sample.yaml`) and shows the
+  "Reload inventory.local.yaml" button. Anywhere else it never asks, so the public site
+  logs no 404 for it.
 - **llms.txt is generated.** Edit `data/tutorials.yaml`, then `make llms`, and commit
   llms.txt and data/tutorial-index.json. Editing llms.txt directly is lost on the next regeneration.
 - **YAML dates parse with CORE_SCHEMA on purpose** (`js/yaml-io.js`). The default
