@@ -31,6 +31,8 @@ Then open http://localhost:8875. It must be served over HTTP: the app is ES modu
 
 Vendored from `packages/neorgon-ui/`: never edit in place, run the sync script instead: `js/neorgon-header.js`, `js/neorgon-footer.js`.
 
+The section heads (`.neo-section-head`) and the severity and data-source pills (`.neo-pill[data-sev]`, `#sourceBadge`) are the Parts Kit's, vendored as `css/neorgon-parts.css` by `packages/neorgon-ui/sync-parts.sh`. The site keeps its look by setting `--neo-*` properties in `css/style.css` (on `.shell__main`, `[data-sev]` and `#sourceBadge`); it never restyles the kit's selectors. Prove any change with `node packages/neorgon-ui/tests/parts-parity.cjs echeance-site`.
+
 ## Data
 
 - `localStorage['echeance-yaml']`: the applied inventory document

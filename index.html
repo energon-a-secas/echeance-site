@@ -42,6 +42,7 @@
   <link rel="stylesheet" href="https://cdn.neorgon.org/v1.0.0/header/season.css">
   <script defer src="js/neorgon-header.js"></script>
   <link rel="stylesheet" href="css/neorgon-footer.css">
+  <link rel="stylesheet" href="css/neorgon-parts.css">
   <script defer src="js/neorgon-footer.js"></script>
   <script type="application/ld+json">
   {
@@ -105,14 +106,14 @@
 
         <!-- ── Board ─────────────────────────────────────────── -->
         <section class="view" id="view-board" aria-labelledby="board-title">
-          <div class="section__header">
-            <div class="section__titles">
-              <h2 class="section__title" id="board-title">Expiry board</h2>
-              <p class="section__lead">
-                Data source: <span class="source-badge" id="sourceBadge">loading</span>
+          <div class="neo-section-head">
+            <div class="neo-section-head__titles">
+              <h2 class="neo-section-head__title" id="board-title">Expiry board</h2>
+              <p class="neo-section-head__finding">
+                Data source: <span class="neo-pill" id="sourceBadge">loading</span>
               </p>
             </div>
-            <div class="toolbar">
+            <div class="toolbar neo-section-head__actions">
               <div class="seg" role="group" aria-label="Group credentials by">
                 <button class="seg__btn" data-groupby="urgency">Urgency</button>
                 <button class="seg__btn" data-groupby="service">Service</button>
@@ -129,11 +130,11 @@
 
         <!-- ── Table ─────────────────────────────────────────── -->
         <section class="view" id="view-table" aria-labelledby="table-title" hidden>
-          <div class="section__header">
-            <div class="section__titles">
-              <h2 class="section__title" id="table-title">Inventory table</h2>
+          <div class="neo-section-head">
+            <div class="neo-section-head__titles">
+              <h2 class="neo-section-head__title" id="table-title">Inventory table</h2>
             </div>
-            <div class="toolbar">
+            <div class="toolbar neo-section-head__actions">
               <input type="search" class="input input--search" id="tableSearch"
                      placeholder="Filter by name, service, scope" aria-label="Filter credentials">
             </div>
@@ -143,11 +144,11 @@
 
         <!-- ── Calendar ──────────────────────────────────────── -->
         <section class="view" id="view-calendar" aria-labelledby="calendar-title" hidden>
-          <div class="section__header">
-            <div class="section__titles">
-              <h2 class="section__title" id="calendar-title">Expiry calendar</h2>
+          <div class="neo-section-head">
+            <div class="neo-section-head__titles">
+              <h2 class="neo-section-head__title" id="calendar-title">Expiry calendar</h2>
             </div>
-            <div class="toolbar">
+            <div class="toolbar neo-section-head__actions">
               <button class="btn btn--ghost btn--sm" id="calPrev" aria-label="Previous month">&#8592;</button>
               <button class="btn btn--secondary btn--sm" id="calToday">Today</button>
               <button class="btn btn--ghost btn--sm" id="calNext" aria-label="Next month">&#8594;</button>
@@ -165,10 +166,10 @@
 
         <!-- ── Tutorials ─────────────────────────────────────── -->
         <section class="view" id="view-tutorials" aria-labelledby="tutorials-title" hidden>
-          <div class="section__header">
-            <div class="section__titles">
-              <h2 class="section__title" id="tutorials-title">Renewal tutorials</h2>
-              <p class="section__lead">
+          <div class="neo-section-head">
+            <div class="neo-section-head__titles">
+              <h2 class="neo-section-head__title" id="tutorials-title">Renewal tutorials</h2>
+              <p class="neo-section-head__finding">
                 Every tutorial as one plain-text file for agents: <a href="llms.txt" class="link">llms.txt</a>.
               </p>
             </div>
@@ -184,11 +185,11 @@
 
         <!-- ── YAML ──────────────────────────────────────────── -->
         <section class="view" id="view-yaml" aria-labelledby="yaml-title" hidden>
-          <div class="section__header">
-            <div class="section__titles">
-              <h2 class="section__title" id="yaml-title">YAML in, YAML out</h2>
+          <div class="neo-section-head">
+            <div class="neo-section-head__titles">
+              <h2 class="neo-section-head__title" id="yaml-title">YAML in, YAML out</h2>
             </div>
-            <div class="toolbar">
+            <div class="toolbar neo-section-head__actions">
               <button class="btn btn--primary btn--sm" id="yamlApplyBtn">Apply</button>
               <button class="btn btn--secondary btn--sm" id="yamlImportBtn">Import file</button>
               <input type="file" id="yamlFileInput" accept=".yaml,.yml,text/yaml" hidden>

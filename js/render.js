@@ -107,7 +107,7 @@ function credCard(c, sev) {
         <span class="cred-card__id">${brandBadge(c.service, c, 'md')}<button
           class="cred-card__name" data-cred="${escHtml(c.id)}"
           aria-label="Open ${escHtml(c.name)}">${escHtml(c.name)}</button></span>
-        <span class="sev-badge sev-${sev}">${escHtml(daysLabel(c))}</span>
+        <span class="neo-pill" data-sev="${sev}">${escHtml(daysLabel(c))}</span>
       </div>
       <div class="cred-card__meta">${escHtml([c.service, c.kind, c.account].filter(Boolean).join(' · '))}</div>
       ${c.expires && c.expires !== 'never' ? `<div class="cred-card__expiry">expires ${fmtDate(c.expires)}</div>` : ''}
@@ -154,7 +154,7 @@ function renderTable(s) {
       <td class="td-service">${brandBadge(c.service, c, 'sm')}${escHtml(c.service || '')}</td>
       <td>${escHtml(c.kind || '')}</td>
       <td>${c.expires === 'never' ? 'never' : escHtml(fmtDate(c.expires))}</td>
-      <td><span class="sev-badge sev-${sev}">${escHtml(daysLabel(c))}</span></td>
+      <td><span class="neo-pill" data-sev="${sev}">${escHtml(daysLabel(c))}</span></td>
       <td class="td-scope">${escHtml(c.scope || '')}</td>
       <td>${escHtml(effectiveStatus(c))}</td>
     </tr>`;
@@ -208,7 +208,7 @@ export function renderCredModal(s, id) {
 
   $('credModalBody').innerHTML = `
     <div class="detail-head">${brandBadge(c.service, c, 'lg')}<span
-      class="sev-badge sev-${sev}">${escHtml(daysLabel(c))}</span>
+      class="neo-pill" data-sev="${sev}">${escHtml(daysLabel(c))}</span>
       <code class="detail-id">${escHtml(c.id)}</code></div>
     <dl class="detail-list">${rows}</dl>`;
 
