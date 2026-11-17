@@ -31,6 +31,7 @@
   <meta name="neo-repo" content="https://github.com/energon-a-secas/echeance-site">
   <meta name="neo-version" content="v1.0.0">
   <meta name="neo-updated" content="updated Aug 2026">
+  <meta name="neo-category" content="devops">
   <!-- Fleet design tokens: canonical, do not redeclare locally (PROJECTS.md section 5) -->
   <link rel="stylesheet" href="https://cdn.neorgon.org/v1.0.0/styles/base.css">
   <link rel="stylesheet" href="css/style.css">
@@ -247,6 +248,19 @@
 
   <footer class="neo-footer" data-footer-mode="app">
     Metadata only: names, dates, scopes. Secret values never belong here, and nothing leaves your browser.
+    <!-- neo-fleet:more -->
+    <nav class="neo-more" aria-label="More in DevOps" data-category="devops" data-label-en="DevOps" data-label-es="DevOps">
+      <span class="neo-more__label" aria-hidden="true"><svg class="neo-more__icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.5" y="4" width="19" height="16" rx="2.5"/><path d="M7 9.5l3 2.5-3 2.5"/><path d="M12.5 15h4.5"/></svg><span class="neo-more__title">More in DevOps</span></span>
+      <ul class="neo-more__list">
+        <li><a href="https://runbook.neorgon.com/">Incident Runbook</a></li>
+        <li><a href="https://lockdown.neorgon.com/">Lockdown</a></li>
+        <li><a href="https://safeguard.neorgon.com/">SafeGuard</a></li>
+        <li><a href="https://snippets.neorgon.com/">Snippets</a></li>
+        <li><a href="https://infradrills.neorgon.com/">Infra Drills</a></li>
+        <li><a class="neo-more__all" href="https://neorgon.com/devops/">All DevOps tools</a></li>
+      </ul>
+    </nav>
+    <!-- /neo-fleet:more -->
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.3.2/dist/js-yaml.min.js" integrity="sha384-uwLg6oO8ZhFG2SuQfgmkMtosjtrFYlkPspa/cXS+b3D8GLRTHMDl/mTwqImdlKQO" crossorigin="anonymous"></script>
