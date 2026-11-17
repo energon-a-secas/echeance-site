@@ -140,8 +140,9 @@ function renderTable(s) {
   const head = COLUMNS.map((col) => {
     const active = col.key === key;
     const arrow = active ? (dir === 1 ? ' ↑' : ' ↓') : '';
-    return `<th scope="col"><button class="th-sort${active ? ' th-sort--on' : ''}"
-      data-sort="${col.key}">${col.label}${arrow}</button></th>`;
+    const sort = active ? ` aria-sort="${dir === 1 ? 'ascending' : 'descending'}"` : '';
+    return `<th scope="col"${sort}><button class="th-sort${active ? ' th-sort--on' : ''}"
+      data-sort="${col.key}" title="Sort by ${col.label.toLowerCase()}">${col.label}${arrow}</button></th>`;
   }).join('');
 
   const body = rows.map((c) => {

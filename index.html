@@ -73,7 +73,7 @@
 
     <div class="header-right">
       <div class="header-actions">
-        <button class="btn btn--ghost btn--sm" id="exportIcsBtn" data-keep-mobile>Export .ics</button>
+        <button class="btn btn--ghost btn--sm" id="exportIcsBtn" data-keep-mobile title="Every expiry date as calendar events with alarms">Export .ics</button>
         <button class="btn btn--ghost btn--sm" id="exportYamlBtn">Export YAML</button>
       </div>
       <a class="header-home" href="https://neorgon.com/" title="neorgon.com" aria-label="Neorgon home">
@@ -131,7 +131,6 @@
           <div class="section__header">
             <div class="section__titles">
               <h2 class="section__title" id="table-title">Inventory table</h2>
-              <p class="section__lead">Click a column to sort, click a row for the full record.</p>
             </div>
             <div class="toolbar">
               <input type="search" class="input input--search" id="tableSearch"
@@ -146,8 +145,6 @@
           <div class="section__header">
             <div class="section__titles">
               <h2 class="section__title" id="calendar-title">Expiry calendar</h2>
-              <p class="section__lead">Expiry dates on a month grid. Export the same dates as
-                <code>.ics</code> to get alarms in your real calendar.</p>
             </div>
             <div class="toolbar">
               <button class="btn btn--ghost btn--sm" id="calPrev" aria-label="Previous month">&#8592;</button>
@@ -171,8 +168,7 @@
             <div class="section__titles">
               <h2 class="section__title" id="tutorials-title">Renewal tutorials</h2>
               <p class="section__lead">
-                The real steps to obtain, renew and revoke each credential, written down once.
-                Agents can read the whole set at <a href="llms.txt" class="link">llms.txt</a>.
+                Every tutorial as one plain-text file for agents: <a href="llms.txt" class="link">llms.txt</a>.
               </p>
             </div>
           </div>
@@ -190,10 +186,6 @@
           <div class="section__header">
             <div class="section__titles">
               <h2 class="section__title" id="yaml-title">YAML in, YAML out</h2>
-              <p class="section__lead">
-                The inventory is one portable YAML document: metadata only, never secret values.
-                Edit here and apply, or import and export files.
-              </p>
             </div>
             <div class="toolbar">
               <button class="btn btn--primary btn--sm" id="yamlApplyBtn">Apply</button>
